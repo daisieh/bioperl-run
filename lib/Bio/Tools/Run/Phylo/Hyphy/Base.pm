@@ -95,7 +95,7 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 =cut
 
 BEGIN {
-    $PROGRAMNAME = 'HYPHYMP' . ($^O =~ /mswin/i ?'.exe':'');
+    $PROGRAMNAME = 'HYPHYMP';
     if( defined $ENV{'HYPHYDIR'} ) {
 	$PROGRAM = Bio::Root::IO->catfile($ENV{'HYPHYDIR'},$PROGRAMNAME). ($^O =~ /mswin/i ?'.exe':'');;
     }
@@ -112,7 +112,7 @@ BEGIN {
 =cut
 
 sub program_name {
-        return 'HYPHYMP';
+    return $PROGRAMNAME;
 }
 
 =head2 program_dir
@@ -126,35 +126,8 @@ sub program_name {
 =cut
 
 sub program_dir {
-        return Bio::Root::IO->catfile($ENV{HYPHYDIR}) if $ENV{HYPHYDIR};
+    return Bio::Root::IO->catfile($ENV{HYPHYDIR}) if $ENV{HYPHYDIR};
 }
-
-
-=head2 new
-
- Title   : new
- Usage   : my $obj = Bio::Tools::Run::Phylo::Hyphy->new();
- Function: Builds a new Bio::Tools::Run::Phylo::Hyphy object
- Returns : Bio::Tools::Run::Phylo::Hyphy
- Args    : -alignment => the Bio::Align::AlignI object
-           -save_tempfiles => boolean to save the generated tempfiles and
-                              NOT cleanup after onesself (default FALSE)
-           -tree => the Bio::Tree::TreeI object
-           -params => a hashref of parameters (all passed to set_parameter)
-           -executable => where the hyphy executable resides
-
-See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
-
-=cut
-
-sub new {
-  my($class,@args) = @_;
-
-  my $self = $class->SUPER::new(@args);
-
-  return $self;
-}
-
 
 =head2 prepare
 
@@ -198,9 +171,8 @@ sub prepare {
        close($tempseqFH);
    }
    $self->{'_params'}{'tempalnfile'} = $tempalnfile;
-   my $outfile = $self->outfile_name || "$tempdir/results.tsv";
+   my $outfile = $self->outfile_name || "$tempdir/results.out";
    $self->{'_params'}{'outfile'} = $outfile;
-
    my ($temptreeFH,$temptreefile);
    if( ! ref($tree) && -e $tree ) {
        $temptreefile = $tree;
@@ -240,20 +212,47 @@ sub create_wrapper {
    my ($self,$batchfile) = @_;
    my $tempdir = $self->tempdir;
    $self->update_ordered_parameters;
+# #### DEBUGGING CODE
+#    foreach my $k (keys %$self) {
+# 		print "###$k\n";
+#    		if (exists $self->{$k}) {
+#    			my $type = ref $self->{$k};
+#    			if ($type =~ m/HASH/) {
+# 				foreach my $i (keys %{$self->{$k}}) {
+# 					print "\t###$i: " . $self->{$k}->{$i} . "\n";
+# 				}
+# 			} elsif ($type =~ m/ARRAY/) {
+# 				for (my $i = 0; $i < scalar(@{$self->{$k}}); $i++) {
+# 					print "\t# $i: " . @{$self->{$k}}[$i] . "\n";
+# 				}
+# 			} else {
+# 				print "\t##" . $type . "\n";
+# 			}
+# 		}
+#    }
+# #### END DEBUGGING CODE
    my $wrapper = "$tempdir/wrapper.bf";
    open(WRAPPER, ">$wrapper") or $self->throw("cannot open $wrapper for writing");
 
    print WRAPPER "$redirect = \{\};\n\n";
    my $counter = sprintf("%02d", 0);
-   foreach my $elem (@{ $self->{'_updatedorderedparams'} }) {
-       my ($param,$val) = each %$elem;
-			print WRAPPER "$redirect \[\"$counter\"\] = \"$val\";\n";
-       $counter = sprintf("%02d",$counter+1);
+   foreach my $elem (@{ $self->{'_orderedparams'} }) {
+		my ($param,$val) = each %$elem;
+		print WRAPPER "$redirect \[\"$counter\"\] = \"$val\";\n";
+		$counter = sprintf("%02d",$counter+1);
    }
-	print WRAPPER "$redirect \[\"$counter\"\] = \"" . $self->outfile_name() . "\";\n";
-   print WRAPPER "\n",'ExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "', $batchfile ,'", ', $redirect, ');', "\n";
+   print WRAPPER "\n" . "ExecuteAFile (" . $batchfile. ", $redirect);" . "\n";
 
    close(WRAPPER);
+
+	##### DEBUGGING CODE
+# 	open my $tmpfile, "<$wrapper";
+# 	while (my $line = readline $tmpfile) {
+# 		print $line;
+# 	}
+# 	close $tmpfile;
+	##### END DEBUGGING CODE
+
    $self->{'_wrapper'} = $wrapper;
 }
 
@@ -347,7 +346,10 @@ sub tree {
 sub get_parameters {
    my ($self) = @_;
    # we're returning a copy of this
-   return @{ $self->{'_hyphyparams'} };
+#    for my $k (keys %{$self->{'_params'}}) {
+#    		print "## $k, " . $self->{'_params'}->{$k} . "\n";
+#    }
+   return %{ $self->{'_params'} };
 }
 
 
@@ -371,9 +373,8 @@ sub get_parameters {
 
 sub set_parameter {
    my ($self,$param,$value) = @_;
-
    # FIXME - add validparams checking
-   $self->{'_hyphyparams'}{$param} = $value;
+   $self->{'_params'}{$param} = $value;
    return 1;
 }
 
@@ -390,26 +391,38 @@ sub set_parameter {
 
 =cut
 
+# sub update_ordered_parameters {
+#    my ($self,$keepold) = @_;
+#    $keepold = 0 unless defined $keepold;
+#    foreach my $elem (@{$self->{'_orderedparams'}}) {
+#        my ($param,$val) = each %$elem;
+#        my $composite_param = $param;
+#        # skip if we want to keep old values and it is already set
+#        if (ref($param) =~ /ARRAY/i ) {
+#            push @{ $self->{'_updatedorderedsparams'} }, {$param, $self->{_params}{$param} || $val};
+#        } elsif ( ref($val) =~ /HASH/i ) {
+#            while (defined($val)) {
+#                last unless (ref($val) =~ /HASH/i);
+#                my ($param,$val) = each %{$val};
+#                $composite_param .= $param;
+#            }
+#            push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$composite_param} || $val};
+#        } else {
+#            push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$param} || $val};
+#        }
+#    }
+# }
+
 sub update_ordered_parameters {
-   my ($self,$keepold) = @_;
-   $keepold = 0 unless defined $keepold;
-   foreach my $elem (@{$self->{'_orderedparams'}}) {
-       my ($param,$val) = each %$elem;
-       my $composite_param = $param;
-       # skip if we want to keep old values and it is already set
-       if (ref($param) =~ /ARRAY/i ) {
-           push @{ $self->{'_updatedorderedsparams'} }, {$param, $self->{_params}{$param} || $val};
-       } elsif ( ref($val) =~ /HASH/i ) {
-           while (defined($val)) {
-               last unless (ref($val) =~ /HASH/i);
-               my ($param,$val) = each %{$val};
-               $composite_param .= $param;
-           }
-           push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$composite_param} || $val};
-       } else {
-           push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$param} || $val};
-       }
-   }
+    my ($self) = @_;
+	for (my $i=0; $i < scalar(@{$self->{'_orderedparams'}}); $i++) {
+		my ($param,$val) = each %{$self->{'_orderedparams'}[$i]};
+		if (exists $self->{'_params'}{$param}) {
+			$self->{'_orderedparams'}[$i] = {$param, $self->{'_params'}{$param}};
+		} else {
+			$self->{'_orderedparams'}[$i] = {$param, $val};
+		}
+	}
 }
 
 
@@ -464,6 +477,7 @@ sub no_param_checks {
 sub outfile_name {
     my $self = shift;
     if( @_ ) {
+        print "set outfile to @_\n";
 	return $self->{'_params'}->{'outfile'} = shift @_;
     }
     return $self->{'_params'}->{'outfile'};

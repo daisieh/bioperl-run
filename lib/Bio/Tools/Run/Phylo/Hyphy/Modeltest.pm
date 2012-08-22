@@ -2,7 +2,7 @@
 #
 # BioPerl module for Bio::Tools::Run::Phylo::Hyphy::Modeltest
 #
-# Please direct questions and support issues to <bioperl-l@bioperl.org> 
+# Please direct questions and support issues to <bioperl-l@bioperl.org>
 #
 # Cared for by Albert Vilella <avilella-at-gmail-dot-com>
 #
@@ -55,15 +55,15 @@ the Bioperl mailing list.  Your participation is much appreciated.
   bioperl-l@bioperl.org                  - General discussion
   http://bioperl.org/wiki/Mailing_lists  - About the mailing lists
 
-=head2 Support 
+=head2 Support
 
 Please direct usage questions or support issues to the mailing list:
 
 I<bioperl-l@bioperl.org>
 
-rather than to the module maintainer directly. Many experienced and 
-reponsive experts will be able look at the problem and quickly 
-address it. Please include a thorough description of the problem 
+rather than to the module maintainer directly. Many experienced and
+reponsive experts will be able look at the problem and quickly
+address it. Please include a thorough description of the problem
 with code and data examples if at all possible.
 
 =head2 Reporting Bugs
@@ -114,19 +114,19 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-BEGIN { 
+BEGIN {
     $PROGRAMNAME = 'HYPHYMP' . ($^O =~ /mswin/i ?'.exe':'');
     if( defined $ENV{'HYPHYDIR'} ) {
 	$PROGRAM = Bio::Root::IO->catfile($ENV{'HYPHYDIR'},$PROGRAMNAME). ($^O =~ /mswin/i ?'.exe':'');;
     }
 
-    @VALIDVALUES = 
+    @VALIDVALUES =
         (
          {'tempalnfile' => undef }, # aln file goes here
          {'temptreefile' => undef }, # tree file goes here
          {'Number of Rate Classes' => [ '4' ] },
-         {'Model Selection Method' => [ 'Both', 
-                                        'Hierarchical Test', 
+         {'Model Selection Method' => [ 'Both',
+                                        'Hierarchical Test',
                                         'AIC Test'] },
          {'Model rejection level' => '0.05' },
         );
@@ -137,7 +137,7 @@ BEGIN {
 
  Title   : new
  Usage   : my $obj = Bio::Tools::Run::Phylo::Hyphy::Modeltest->new();
- Function: Builds a new Bio::Tools::Run::Phylo::Hyphy::Modeltest object 
+ Function: Builds a new Bio::Tools::Run::Phylo::Hyphy::Modeltest object
  Returns : Bio::Tools::Run::Phylo::Hyphy::Modeltest
  Args    : -alignment => the Bio::Align::AlignI object
            -save_tempfiles => boolean to save the generated tempfiles and
@@ -154,8 +154,8 @@ sub new {
   my($class,@args) = @_;
 
   my $self = $class->SUPER::new(@args);
-  my ($aln, $tree, $st, $params, $exe, 
-      $ubl) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES 
+  my ($aln, $tree, $st, $params, $exe,
+      $ubl) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES
 				    PARAMS EXECUTABLE)],
 				    @args);
   defined $aln && $self->alignment($aln);
@@ -165,7 +165,7 @@ sub new {
 
   $self->set_default_parameters();
   if( defined $params ) {
-      if( ref($params) !~ /HASH/i ) { 
+      if( ref($params) !~ /HASH/i ) {
 	  $self->warn("Must provide a valid hash ref for parameter -FLAGS");
       } else {
 	  map { $self->set_parameter($_, $$params{$_}) } keys %$params;
@@ -236,7 +236,7 @@ sub run {
  Usage   : $self->create_wrapper
  Function: It will create the wrapper file that interfaces with the analysis bf file
  Example :
- Returns : 
+ Returns :
  Args    :
 
 
@@ -245,7 +245,9 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-   my $batchfile = 'ModelTest.bf';
+   #my $batchfile = 'ModelTest.bf';
+   my $batchfile = "HYPHY_LIB_DIRECTORY + \"TemplateBatchFiles\" + DIRECTORY_SEPARATOR + \"ModelTest.bf\"";
+
    $self->SUPER::create_wrapper($batchfile);
 }
 
@@ -255,7 +257,7 @@ sub create_wrapper {
  Title   : set_default_parameters
  Usage   : $modeltest->set_default_parameters(0);
  Function: (Re)set the default parameters from the defaults
-           (the first value in each array in the 
+           (the first value in each array in the
 	    %VALIDVALUES class variable)
  Returns : none
  Args    : boolean: keep existing parameter values
@@ -275,8 +277,8 @@ sub set_default_parameters {
            } else {
                $val = $val->[0];
            }
-       } 
-       if ( ref($val) =~ /HASH/i ) { 
+       }
+       if ( ref($val) =~ /HASH/i ) {
            my $prevparam;
            while (defined($val)) {
                last unless (ref($val) =~ /HASH/i);
@@ -286,7 +288,7 @@ sub set_default_parameters {
                push @{ $self->{'_orderedparams'} }, {$prevparam, $param};
                push @{ $self->{'_orderedparams'} }, {$param, $val} if (defined($val));
            }
-       } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) { 
+       } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) {
            push @{ $self->{'_orderedparams'} }, {$param, $val};
        }
    }
@@ -301,7 +303,7 @@ sub set_default_parameters {
 
  Title   : save_tempfiles
  Usage   : $obj->save_tempfiles($newval)
- Function: 
+ Function:
  Returns : value of save_tempfiles
  Args    : newvalue (optional)
 
