@@ -130,6 +130,34 @@ sub program_dir {
    return Bio::Root::IO->catfile($ENV{HYPHYDIR}) if $ENV{HYPHYDIR};
 }
 
+
+=head2 new
+
+ Title   : new
+ Usage   : my $obj = Bio::Tools::Run::Phylo::Hyphy->new();
+ Function: Builds a new Bio::Tools::Run::Phylo::Hyphy object
+ Returns : Bio::Tools::Run::Phylo::Hyphy
+ Args    : -alignment => the Bio::Align::AlignI object
+           -save_tempfiles => boolean to save the generated tempfiles and
+                              NOT cleanup after onesself (default FALSE)
+           -tree => the Bio::Tree::TreeI object
+           -params => a hashref of parameters (all passed to set_parameter)
+           -executable => where the hyphy executable resides
+
+See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
+
+=cut
+
+sub new {
+  my($class,@args) = @_;
+
+  my $self = $class->SUPER::new(@args);
+    my $versionstring = $self->version();
+
+  return $self;
+}
+
+
 =head2 prepare
 
  Title   : prepare
@@ -168,7 +196,7 @@ sub prepare {
       close($tempseqFH);
    }
    $self->{'_params'}{'tempalnfile'} = $tempalnfile;
-   my $outfile = $self->outfile_name || "$tempdir/results.out";
+   my $outfile = $self->outfile_name || "$tempdir/results.tsv";
    $self->{'_params'}{'outfile'} = $outfile;
    my ($temptreeFH,$temptreefile);
    if( ! ref($tree) && -e $tree ) {
@@ -204,6 +232,12 @@ sub create_wrapper {
    my ($self,$batchfile) = @_;
    my $tempdir = $self->tempdir;
    $self->update_ordered_parameters;
+
+   #check version of HYPHY:
+   my $versionstring = $self->version();
+   $versionstring =~ /.*?(\d+\.\d+).*/;
+   my $version = $1;
+
 # #### DEBUGGING CODE
 #    foreach my $k (keys %$self) {
 #       print "###$k\n";
@@ -233,7 +267,19 @@ sub create_wrapper {
       print WRAPPER qq{$redirect ["$counter"] = "$val";\n};
       $counter = sprintf("%02d",$counter+1);
    }
-   print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
+   # This next line is for BatchFile:
+    if ($batchfile =~ m/TemplateBatchFiles/) {
+        # Not exactly sure what version of HYPHY caused this change,
+        # but Github source changes suggest that it was sometime
+        # after version 0.9920060501 was required.
+        if ($version >= 0.9920060501) {
+           print WRAPPER qq{\nExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
+        } else {
+           print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
+        }
+    } else {
+        print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
+    }
 
    close(WRAPPER);
    $self->{'_wrapper'} = $wrapper;
@@ -371,28 +417,6 @@ sub set_parameter {
 
 =cut
 
-# sub update_ordered_parameters {
-#    my ($self,$keepold) = @_;
-#    $keepold = 0 unless defined $keepold;
-#    foreach my $elem (@{$self->{'_orderedparams'}}) {
-#        my ($param,$val) = each %$elem;
-#        my $composite_param = $param;
-#        # skip if we want to keep old values and it is already set
-#        if (ref($param) =~ /ARRAY/i ) {
-#            push @{ $self->{'_updatedorderedsparams'} }, {$param, $self->{_params}{$param} || $val};
-#        } elsif ( ref($val) =~ /HASH/i ) {
-#            while (defined($val)) {
-#                last unless (ref($val) =~ /HASH/i);
-#                my ($param,$val) = each %{$val};
-#                $composite_param .= $param;
-#            }
-#            push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$composite_param} || $val};
-#        } else {
-#            push @{ $self->{'_updatedorderedparams'} }, {$param, $self->{_params}{$param} || $val};
-#        }
-#    }
-# }
-
 sub update_ordered_parameters {
    my ($self) = @_;
    for (my $i=0; $i < scalar(@{$self->{'_orderedparams'}}); $i++) {
@@ -457,7 +481,6 @@ sub no_param_checks {
 sub outfile_name {
    my $self = shift;
    if( @_ ) {
-      print "set outfile to @_\n";
       return $self->{'_params'}->{'outfile'} = shift @_;
    }
    return $self->{'_params'}->{'outfile'};
@@ -505,16 +528,35 @@ sub outfile_name {
 
 =cut
 
-=head2 io
+=head2 version
 
- Title   : io
- Usage   : $obj->io($newval)
- Function:  Gets a L<Bio::Root::IO> object
- Returns : L<Bio::Root::IO>
+ Title   : version
+ Usage   : $obj->version()
+ Function:  Returns the version string from HYPHY
+ Returns : string
  Args    : none
 
 
 =cut
+
+sub version {
+    my $self = shift;
+    my $tempdir = $self->tempdir;
+    my $wrapper = "$tempdir/version.bf";
+    open(WRAPPER, ">$wrapper") or $self->throw("cannot open $wrapper for writing");
+    print WRAPPER qq{GetString (versionString, HYPHY_VERSION, 2);\nfprintf (stdout, versionString);};
+    close(WRAPPER);
+    my $exe = $self->executable();
+    unless ($exe && -e $exe && -x _) {
+        $self->throw("unable to find or run executable for 'HYPHY'");
+    }
+    my $commandstring = $exe . " BASEPATH=" . $self->program_dir . " " . $wrapper;
+    open(RUN, "$commandstring |") or $self->throw("Cannot open exe $exe");
+    my $output = <RUN>;
+    close(RUN);
+    $self->{'_version'} = $output;
+    return $output;
+}
 
 sub DESTROY {
    my $self= shift;
