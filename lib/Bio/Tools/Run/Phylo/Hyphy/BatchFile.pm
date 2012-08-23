@@ -1,6 +1,6 @@
 =head1 NAME
 
-Bio::Tools::Run::Phylo::Hyphy::BatchFile - Wrapper around the Hyphy BatchFile analysis
+Bio::Tools::Run::Phylo::Hyphy::BatchFile - Wrapper for custom execution of Hyphy batch files
 
 =head1 SYNOPSIS
 
@@ -60,16 +60,7 @@ Email daisieh@zoology.ubc.ca
 
 Additional contributors names and emails here
 
-=head1 APPENDIX
-
-The rest of the documentation details each of the object methods.
-Internal methods are usually preceded with a _
-
 =cut
-
-
-# Let the code begin...
-
 
 package Bio::Tools::Run::Phylo::Hyphy::BatchFile;
 use strict;
@@ -86,8 +77,6 @@ use base qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 Valid and default values for BatchFile are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
-
-INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
@@ -111,6 +100,8 @@ our @VALIDVALUES =
                               NOT cleanup after onesself (default FALSE)
            -tree => the Bio::Tree::TreeI object
            -params => a hashref of parameters (all passed to set_parameter)
+                      this hashref should include   'bf' => custombatchfile.bf
+                                                    'order' => [array of ordered parameters]
            -executable => where the hyphy executable resides
 
 See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
@@ -146,7 +137,6 @@ sub new {
  Returns : nothing
  Args    : none
 
-
 =cut
 
 sub update_ordered_parameters {
@@ -156,7 +146,7 @@ sub update_ordered_parameters {
     }
     for (my $i=0; $i< scalar @{$self->{'_params'}{'order'}}; $i++) {
         my $item = @{$self->{'_params'}{'order'}}[$i];
-        #FIXME: this should be more flexible. It should be able to tell what type of object $item is and, if necessary, create a temp file for it.
+        #FIXME: update_ordered_parameters should be more flexible. It should be able to tell what type of object $item is and, if necessary, create a temp file for it.
         if (ref ($item) =~ m/Bio::SimpleAlign/) {
             $item = $self->{'_params'}{'tempalnfile'};
         } elsif (ref ($item) =~ m/Bio::Tree::Tree/) {
@@ -170,19 +160,19 @@ sub update_ordered_parameters {
 =head2 run
 
  Title   : run
- Usage   : my ($rc,$results) = $BatchFile->run($aln);
- Function: run the BatchFile analysis using the default or updated parameters
-           the alignment parameter must have been set
+ Usage   : my ($rc,$results) = $BatchFile->run();
+ Function: run the Hyphy analysis using the specified batchfile and its ordered parameters
  Returns : Return code, Hash
- Args    : L<Bio::Align::AlignI> object,
-           L<Bio::Tree::TreeI> object [optional]
+ Args    : none
 
 
 =cut
 
 sub run {
-    my ($self,$aln,$tree) = @_;
+    my ($self) = @_;
 
+    my $aln = $self->alignment;
+    my $tree = $self->tree;
     unless (defined($self->{'_prepared'})) {
         $self->prepare($aln,$tree);
     }
@@ -253,10 +243,9 @@ sub run {
 
  Title   : create_wrapper
  Usage   : $self->create_wrapper
- Function: It will create the wrapper file that interfaces with the analysis bf file
- Example :
- Returns :
- Args    :
+ Function: Creates the wrapper file for the batchfile specified in new(), saves it to the hash as '_wrapper'.
+ Returns : nothing
+ Args    : none
 
 
 =cut
@@ -273,11 +262,9 @@ Title   :  set_parameter
 Usage   :  $hyphy->set_parameter($param,$val);
 Function:  Sets the named parameter $param to $val if it is a non-numeric parameter
            If $param is a number, sets the corresponding value of the ordered redirect array.
-Returns :  boolean if set was success, if verbose is set to -1
-           then no warning will be reported
+Returns :  boolean if set was successful
 Args    :  $param => name of the parameter
            $value => value to set the parameter to
-See also:  L<no_param_checks()>
 
 =cut
 
@@ -321,25 +308,8 @@ sub set_default_parameters {
         } else {
             $self->{'_orderedparams'}[$i] = {$param, $val};
         }
+        #FIXME: for alignment and treefile, this should default to the ones in params.
     }
-}
-=head2 io
-
- Title   : io
- Usage   : $obj->io($newval)
- Function:  Gets a L<Bio::Root::IO> object
- Returns : L<Bio::Root::IO>
- Args    : none
-
-
-=cut
-
-sub DESTROY {
-    my $self= shift;
-    unless ( $self->save_tempfiles ) {
-        $self->cleanup();
-    }
-    $self->SUPER::DESTROY();
 }
 
 1;
