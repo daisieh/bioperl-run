@@ -284,8 +284,7 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-#   my $batchfile = 'QuickSelectionDetection.bf';
-   my $batchfile = qq{HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR + "QuickSelectionDetection.bf"};
+   my $batchfile = 'QuickSelectionDetection.bf';
    $self->SUPER::create_wrapper($batchfile);
 }
 

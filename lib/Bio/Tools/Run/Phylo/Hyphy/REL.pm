@@ -198,7 +198,6 @@ sub run {
       my $relexe = $self->executable();
       $self->throw("unable to find or run executable for 'HYPHY'") unless $relexe && -e $relexe && -x _;
       $commandstring = $relexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-      print ">>$commandstring\n";
       open(RUN, "$commandstring |") or $self->throw("Cannot open exe $relexe");
       my @output = <RUN>;
       $exit_status = close(RUN);
@@ -243,9 +242,8 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-   my $batchfile = qq{HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR + "YangNielsenBranchSite2005.bf"};
-      $self->SUPER::create_wrapper($batchfile);
-
+   my $batchfile = 'YangNielsenBranchSite2005.bf';
+   $self->SUPER::create_wrapper($batchfile);
 }
 
 

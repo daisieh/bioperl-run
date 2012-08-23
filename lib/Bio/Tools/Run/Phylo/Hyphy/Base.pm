@@ -268,7 +268,9 @@ sub create_wrapper {
       $counter = sprintf("%02d",$counter+1);
    }
    # This next line is for BatchFile:
-    if ($batchfile =~ m/TemplateBatchFiles/) {
+    if (($batchfile =~ m/YangNielsenBranchSite2005.bf/) ||
+        ($batchfile =~ m/QuickSelectionDetection.bf/) ||
+        ($batchfile =~ m/ModelTest.bf/)) {
         # Not exactly sure what version of HYPHY caused this change,
         # but Github source changes suggest that it was sometime
         # after version 0.9920060501 was required.

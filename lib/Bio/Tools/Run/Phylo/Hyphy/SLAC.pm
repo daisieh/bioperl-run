@@ -204,7 +204,6 @@ sub run {
    my ($self,$aln,$tree) = @_;
 
    $self->prepare($aln,$tree) unless (defined($self->{'_prepared'}));
-   $self->create_wrapper();
    my ($rc,$results) = (1);
    {
        my $commandstring;
@@ -266,9 +265,7 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-#   my $batchfile = 'QuickSelectionDetection.bf';
-   my $batchfile = qq{HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR + "QuickSelectionDetection.bf"};
-
+   my $batchfile = 'QuickSelectionDetection.bf';
    $self->SUPER::create_wrapper($batchfile);
 }
 

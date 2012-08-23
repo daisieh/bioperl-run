@@ -245,8 +245,7 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-   my $batchfile = qq{HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR + "ModelTest.bf"};
-
+   my $batchfile = 'ModelTest.bf';
    $self->SUPER::create_wrapper($batchfile);
 }
 
