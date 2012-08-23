@@ -4,32 +4,23 @@ Bio::Tools::Run::Phylo::Hyphy::BatchFile - Wrapper around the Hyphy BatchFile an
 
 =head1 SYNOPSIS
 
-  use Bio::Tools::Run::Phylo::Hyphy::BatchFile;
-  use Bio::AlignIO;
-  use Bio::TreeIO;
-
-  my $alignio = Bio::AlignIO->new(-format => 'fasta',
-  			         -file   => 't/data/hyphy1.fasta');
-
-  my $aln = $alignio->next_aln;
-
-  my $treeio = Bio::TreeIO->new(
-      -format => 'newick', -file => 't/data/hyphy1.tree');
-
-  my $BatchFile = Bio::Tools::Run::Phylo::Hyphy::BatchFile->new();
-  $BatchFile->alignment($aln);
-  $BatchFile->tree($tree);
-  my ($rc,$results) = $BatchFile->run();
+my $aln = Bio::Align::AlignI->new();
+my $treeio = Bio::TreeIO->new(-format => "nexus", -file => "$tree_file");
+my $tree = $treeio->next_tree();
+my $bf_exec = Bio::Tools::Run::Phylo::Hyphy::BatchFile->new(-params => {'bf' => "hyphybatchfile.bf", 'order' => ["Universal", "Custom", $aln, "001001", $tree]});
+$bf_exec->set_parameter('3', "012012");
+my ($rc,$parser) = $bf_exec->run();
 
 =head1 DESCRIPTION
 
-This is a wrapper around the BatchFile analysis of HyPhy ([Hy]pothesis
-Testing Using [Phy]logenies) package of Sergei Kosakowsky Pond,
+This module creates a generic interface to processing of HBL files in HyPhy ([Hy]pothesis
+Testing Using [Phy]logenies), a package by Sergei Kosakowsky Pond,
 Spencer V. Muse, Simon D.W. Frost and Art Poon.  See
 http://www.hyphy.org for more information.
 
-This module will generate the correct list of options for interfacing
-with TemplateBatchFiles/Ghostrides/Wrapper.bf.
+Instances of this module require only a link to the batch file and an ordered list of
+parameters, as described in the HyPhy documentation "SelectionAnalyses.pdf."
+
 
 =head1 FEEDBACK
 
@@ -81,7 +72,6 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::BatchFile;
-use vars qw(@ISA @VALIDVALUES $PROGRAMNAME $PROGRAM);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -89,7 +79,7 @@ use Bio::TreeIO;
 use Bio::Tools::Run::Phylo::Hyphy::Base;
 use Bio::Tools::Run::WrapperBase;
 
-@ISA = qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
+use base qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 
 =head2 Default Values
 
@@ -101,16 +91,14 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-BEGIN {
-    @VALIDVALUES =
-        (
-         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
-                             "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
-                             "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
-         {'tempalnfile' => undef }, # aln file goes here
-         {'temptreefile' => undef }, # tree file goes here
-        );
-}
+our @VALIDVALUES =
+    (
+        {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
+                         "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
+                         "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
+        {'tempalnfile' => undef }, # aln file goes here
+        {'temptreefile' => undef }, # tree file goes here
+    );
 
 =head2 new
 
@@ -130,27 +118,24 @@ See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
 =cut
 
 sub new {
-  my($class,@args) = @_;
+    my($class,@args) = @_;
 
-  my $self = $class->SUPER::new(@args);
-  my ($aln, $tree, $st, $params, $exe,
-      $ubl) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES
-				    PARAMS EXECUTABLE)],
-				    @args);
-  defined $aln && $self->alignment($aln);
-  defined $tree && $self->tree($tree);
-  defined $st  && $self->save_tempfiles($st);
-  defined $exe && $self->executable($exe);
+    my $self = $class->SUPER::new(@args);
+    my ($aln, $tree, $st, $params, $exe) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES PARAMS EXECUTABLE)], @args);
+    defined $aln && $self->alignment($aln);
+    defined $tree && $self->tree($tree);
+    defined $st  && $self->save_tempfiles($st);
+    defined $exe && $self->executable($exe);
 
-  $self->set_default_parameters();
-  if( defined $params ) {
-      if( ref($params) !~ /HASH/i ) {
-	  $self->warn("Must provide a valid hash ref for parameter -FLAGS");
-      } else {
-	  map { $self->set_parameter($_, $$params{$_}) } keys %$params;
-      }
-  }
-  return $self;
+    $self->set_default_parameters();
+    if( defined $params ) {
+        if( ref($params) !~ /HASH/i ) {
+            $self->warn("Must provide a valid hash ref for parameter -FLAGS");
+        } else {
+            map { $self->set_parameter($_, $$params{$_}) } keys %$params;
+        }
+    }
+    return $self;
 }
 
 =head2 update_ordered_parameters
@@ -166,19 +151,20 @@ sub new {
 
 sub update_ordered_parameters {
     my ($self) = @_;
-	unless (defined ($self->{'_params'}{'order'})) {
-		$self->throw("No ordered parameters for HYPHY were defined.");
-	}
-	for (my $i=0; $i< scalar @{$self->{'_params'}{'order'}}; $i++) {
-		my $item = @{$self->{'_params'}{'order'}}[$i];
-		if (ref ($item) =~ m/Bio::SimpleAlign/) {
-			$item = $self->{'_params'}{'tempalnfile'};
-		} elsif (ref ($item) =~ m/Bio::Tree::Tree/) {
-			$item = $self->{'_params'}{'temptreefile'};
-		}
-		$self->{'_orderedparams'}[$i] = {$i, $item};
-	}
-	$self->SUPER::update_ordered_parameters();
+    unless (defined ($self->{'_params'}{'order'})) {
+        $self->throw("No ordered parameters for HYPHY were defined.");
+    }
+    for (my $i=0; $i< scalar @{$self->{'_params'}{'order'}}; $i++) {
+        my $item = @{$self->{'_params'}{'order'}}[$i];
+        #FIXME: this should be more flexible. It should be able to tell what type of object $item is and, if necessary, create a temp file for it.
+        if (ref ($item) =~ m/Bio::SimpleAlign/) {
+            $item = $self->{'_params'}{'tempalnfile'};
+        } elsif (ref ($item) =~ m/Bio::Tree::Tree/) {
+            $item = $self->{'_params'}{'temptreefile'};
+        }
+        $self->{'_orderedparams'}[$i] = {$i, $item};
+    }
+    $self->SUPER::update_ordered_parameters();
 }
 
 =head2 run
@@ -189,77 +175,77 @@ sub update_ordered_parameters {
            the alignment parameter must have been set
  Returns : Return code, Hash
  Args    : L<Bio::Align::AlignI> object,
-	   L<Bio::Tree::TreeI> object [optional]
+           L<Bio::Tree::TreeI> object [optional]
 
 
 =cut
 
 sub run {
-	my ($self,$aln,$tree) = @_;
+    my ($self,$aln,$tree) = @_;
 
-	unless (defined($self->{'_prepared'})) {
-		$self->prepare($aln,$tree);
-	}
-	unless (defined($self->{'_params'}{'bf'})) {
-		$self->throw("no custom batch file specified!");
-	}
-	my $rc = 1;
-	my $results = "";
-	my $commandstring;
-	my $error_msg;
-	my $output_str = "";
-	my $BatchFileexe = $self->executable();
-	my $outfile = $self->outfile_name;
-	unless ($BatchFileexe && -e $BatchFileexe && -x _) {
-		$self->throw("unable to find or run executable for 'HYPHY'");
-	}
+    unless (defined($self->{'_prepared'})) {
+        $self->prepare($aln,$tree);
+    }
+    unless (defined($self->{'_params'}{'bf'})) {
+        $self->throw("no custom batch file specified!");
+    }
+    my $rc = 1;
+    my $results = "";
+    my $commandstring;
+    my $error_msg;
+    my $output_str = "";
+    my $BatchFileexe = $self->executable();
+    my $outfile = $self->outfile_name;
+    unless ($BatchFileexe && -e $BatchFileexe && -x _) {
+        $self->throw("unable to find or run executable for 'HYPHY'");
+    }
 
-	my $kid_pid = open (KID, "-|"); # forks two processes; the child is for handling just the HYPHY exec.
-	unless ($kid_pid) { # child
-		#runs the HYPHY command
-		$commandstring = $BatchFileexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-		my $pid = open(RUN, "$commandstring |") or $self->throw("Cannot open exe $BatchFileexe");
+    my $kid_pid = open (KID, "-|"); # forks two processes; the child is for handling just the HYPHY exec.
+    unless ($kid_pid) { # child
+        #runs the HYPHY command
+        $commandstring = $BatchFileexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
+        my $pid = open(RUN, "-|", "$commandstring") or $self->throw("Cannot open exe $BatchFileexe");
 
-		my $waiting = waitpid $pid,0;
-		# waitpid will leave a nonzero error in $? if the HYPHY command crashes, so we should bail gracefully.
-		my $error = $? & 127;
-		if ($error != 0) {
-			print "Error: " . $self->program_name . " ($waiting) quit unexpectedly with signal $error";
-			exit 0; # exit with 0 so that the parent knows HYPHY aborted.
-		}
-		#otherwise, return the results and exit with 1 so that the parent knows we were successful.
-		while (my $line = <RUN>) {
-			$results .= "$line";
-		}
-		close(RUN);
-		print $results;
-		exit 1;
-	} else { # parent
-		# read in the results from the child process
-		while (my $line = <KID>) {
-			$results .= "$line";
-		}
-		close KID;
+        my $waiting = waitpid $pid,0;
+        # waitpid will leave a nonzero error in $? if the HYPHY command crashes, so we should bail gracefully.
+        my $error = $? & 127;
+        if ($error != 0) {
+            print "Error: " . $self->program_name . " ($waiting) quit unexpectedly with signal $error";
+            exit 0; # exit with 0 so that the parent knows HYPHY aborted.
+        }
+        #otherwise, return the results and exit with 1 so that the parent knows we were successful.
+        while (my $line = <RUN>) {
+            $results .= "$line";
+        }
+        close(RUN);
+        print $results;
+        exit 1;
+    } else { # parent
+        # read in the results from the child process
+        while (my $line = <KID>) {
+            $results .= "$line";
+        }
+        close KID;
 
-		# process the errors from $? and set the error values.
-		$rc = $? >> 8;
-		if (($results =~ m/err/i) || ($rc == 0)) { # either the child process had an error, or HYPHY put one in the output.
-			$rc = 0;
-			$self->warn($self->program_name . " reported an error - see error_string for the program output");
-			$results =~ m/(err.+)/is;
-			$self->error_string($1);
-		}
-		open(OUTFILE, ">$outfile") or $self->throw("cannot open $outfile for writing");
-		print OUTFILE $results;
-		close(OUTFILE);
+        # process the errors from $? and set the error values.
+        $rc = $? >> 8;
+        if (($results =~ m/err/i) || ($rc == 0)) { # either the child process had an error, or HYPHY put one in the output.
+            $rc = 0;
+            $self->warn($self->program_name . " reported an error - see error_string for the program output");
+            $results =~ m/(err.+)/is;
+            $self->error_string($1);
+        }
+        open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
+        print OUTFILE $results;
+        close(OUTFILE);
 
-		unless ( $self->save_tempfiles ) {
-			unlink($self->{'_wrapper'});
-			$self->cleanup();
-		}
-	}
+        unless ( $self->save_tempfiles ) {
+            unlink($self->{'_wrapper'});
+            $self->cleanup();
+        }
+    }
 
-	return ($rc,$results);
+    return ($rc,$results);
 }
 
 
@@ -276,34 +262,34 @@ sub run {
 =cut
 
 sub create_wrapper {
-   my $self = shift;
-   my $batchfile = '"' . $self->{'_params'}{'bf'} . '"';
-   $self->SUPER::create_wrapper($batchfile);
+    my $self = shift;
+    my $batchfile = '"' . $self->{'_params'}{'bf'} . '"';
+    $self->SUPER::create_wrapper($batchfile);
 }
 
 =head2 set_parameter
 
- Title   : 	set_parameter
- Usage   : 	$hyphy->set_parameter($param,$val);
- Function: 	Sets the named parameter $param to $val if it is a non-numeric parameter
- 			If $param is a number, sets the corresponding value of the ordered redirect array.
- Returns : 	boolean if set was success, if verbose is set to -1
-           	then no warning will be reported
- Args    : 	$param => name of the parameter
-           	$value => value to set the parameter to
- See also: 	L<no_param_checks()>
+Title   :  set_parameter
+Usage   :  $hyphy->set_parameter($param,$val);
+Function:  Sets the named parameter $param to $val if it is a non-numeric parameter
+           If $param is a number, sets the corresponding value of the ordered redirect array.
+Returns :  boolean if set was success, if verbose is set to -1
+           then no warning will be reported
+Args    :  $param => name of the parameter
+           $value => value to set the parameter to
+See also:  L<no_param_checks()>
 
 =cut
 
 
 sub set_parameter {
-	my ($self,$param,$value) = @_;
-	if ($param =~ /\d+/) {
-		$self->{'_params'}{'order'}[$param] = $value;
-	} else {
-		$self->{'_params'}{$param} = $value;
-	}
-	return 1;
+    my ($self,$param,$value) = @_;
+    if ($param =~ /\d+/) {
+        $self->{'_params'}{'order'}[$param] = $value;
+    } else {
+        $self->{'_params'}{$param} = $value;
+    }
+    return 1;
 }
 
 
@@ -313,7 +299,7 @@ sub set_parameter {
  Usage   : $BatchFile->set_default_parameters(0);
  Function: (Re)set the default parameters from the defaults
            (the first value in each array in the
-	    @VALIDVALUES class variable)
+            @VALIDVALUES class variable)
  Returns : none
  Args    : boolean: keep existing parameter values
 
@@ -321,73 +307,22 @@ sub set_parameter {
 =cut
 
 sub set_default_parameters {
-	my ($self,$keepold) = @_;
-	unless (defined $keepold) {
-		$keepold = 0;
-	}
-	for (my $i=0; $i< scalar (@VALIDVALUES); $i++) {
-		my $elem = @VALIDVALUES[$i];
-		keys %$elem; #reset iterator
-		my ($param,$val) = each %$elem;
-		# skip if we want to keep old values and it is already set
-		if (ref($val)=~/ARRAY/i ) {
-			$self->{'_orderedparams'}[$i] = {$param, $val->[0]};
-		} else {
-			$self->{'_orderedparams'}[$i] = {$param, $val};
-		}
-	}
+    my ($self,$keepold) = @_;
+    unless (defined $keepold) {
+        $keepold = 0;
+    }
+    for (my $i=0; $i< scalar (@VALIDVALUES); $i++) {
+        my $elem = @VALIDVALUES[$i];
+        keys %$elem; #reset hash iterator
+        my ($param,$val) = each %$elem;
+        # skip if we want to keep old values and it is already set
+        if (ref($val)=~/ARRAY/i ) {
+            $self->{'_orderedparams'}[$i] = {$param, $val->[0]};
+        } else {
+            $self->{'_orderedparams'}[$i] = {$param, $val};
+        }
+    }
 }
-
-
-=head1 Bio::Tools::Run::WrapperBase methods
-
-=cut
-
-=head2 no_param_checks
-
- Title   : no_param_checks
- Usage   : $obj->no_param_checks($newval)
- Function: Boolean flag as to whether or not we should
-           trust the sanity checks for parameter values
- Returns : value of no_param_checks
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 save_tempfiles
-
- Title   : save_tempfiles
- Usage   : $obj->save_tempfiles($newval)
- Function:
- Returns : value of save_tempfiles
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 tempdir
-
- Title   : tempdir
- Usage   : my $tmpdir = $self->tempdir();
- Function: Retrieve a temporary directory name (which is created)
- Returns : string which is the name of the temporary directory
- Args    : none
-
-
-=cut
-
-=head2 cleanup
-
- Title   : cleanup
- Usage   : $BatchFile->cleanup();
- Function: Will cleanup the tempdir directory after a run
- Returns : none
- Args    : none
-
-
-=cut
-
 =head2 io
 
  Title   : io
@@ -402,7 +337,7 @@ sub set_default_parameters {
 sub DESTROY {
     my $self= shift;
     unless ( $self->save_tempfiles ) {
-	$self->cleanup();
+        $self->cleanup();
     }
     $self->SUPER::DESTROY();
 }

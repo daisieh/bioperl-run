@@ -75,14 +75,13 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::Base;
-use vars qw(@ISA @VALIDVALUES $PROGRAMNAME $PROGRAM);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
 use Bio::TreeIO;
 use Bio::Tools::Run::WrapperBase;
 
-@ISA = qw(Bio::Root::Root Bio::Tools::Run::WrapperBase);
+use base qw(Bio::Root::Root Bio::Tools::Run::WrapperBase);
 
 =head2 Default Values
 
@@ -94,11 +93,13 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
+our $PROGRAMNAME = 'HYPHYMP';
+our $PROGRAM;
+
 BEGIN {
-    $PROGRAMNAME = 'HYPHYMP';
-    if( defined $ENV{'HYPHYDIR'} ) {
-	$PROGRAM = Bio::Root::IO->catfile($ENV{'HYPHYDIR'},$PROGRAMNAME). ($^O =~ /mswin/i ?'.exe':'');;
-    }
+   if( defined $ENV{'HYPHYDIR'} ) {
+      $PROGRAM = Bio::Root::IO->catfile($ENV{'HYPHYDIR'},$PROGRAMNAME). ($^O =~ /mswin/i ?'.exe':'');;
+   }
 }
 
 =head2 program_name
@@ -112,7 +113,7 @@ BEGIN {
 =cut
 
 sub program_name {
-    return $PROGRAMNAME;
+   return $PROGRAMNAME;
 }
 
 =head2 program_dir
@@ -126,7 +127,7 @@ sub program_name {
 =cut
 
 sub program_dir {
-    return Bio::Root::IO->catfile($ENV{HYPHYDIR}) if $ENV{HYPHYDIR};
+   return Bio::Root::IO->catfile($ENV{HYPHYDIR}) if $ENV{HYPHYDIR};
 }
 
 =head2 prepare
@@ -137,55 +138,47 @@ sub program_dir {
            the alignment parameter must have been set
  Returns : value of rundir
  Args    : L<Bio::Align::AlignI> object,
-	   L<Bio::Tree::TreeI> object [optional]
+           L<Bio::Tree::TreeI> object [optional]
 
 =cut
 
 sub prepare {
    my ($self,$aln,$tree) = @_;
    unless ( $self->save_tempfiles ) {
-       # brush so we don't get plaque buildup ;)
-       $self->cleanup();
+      # brush so we don't get plaque buildup ;)
+      $self->cleanup();
    }
    $tree = $self->tree unless $tree;
    $aln  = $self->alignment unless $aln;
    if( ! $aln ) {
-       $self->warn("must have supplied a valid alignment file in order to run hyphy");
-       return 0;
+      $self->warn("must have supplied a valid alignment file in order to run hyphy");
+      return 0;
    }
    my ($tempdir) = $self->tempdir();
    my ($tempseqFH,$tempalnfile);
    if( ! ref($aln) && -e $aln ) {
-       $tempalnfile = $aln;
+      $tempalnfile = $aln;
    } else {
-       ($tempseqFH,$tempalnfile) = $self->io->tempfile
-	   ('-dir' => $tempdir,
-	    UNLINK => ($self->save_tempfiles ? 0 : 1));
-       $aln->set_displayname_flat(1);
-       my $alnout = Bio::AlignIO->new('-format'      => 'fasta',
-				     '-fh'          => $tempseqFH);
-
-       $alnout->write_aln($aln);
-       $alnout->close();
-       undef $alnout;
-       close($tempseqFH);
+      ($tempseqFH,$tempalnfile) = $self->io->tempfile('-dir' => $tempdir, UNLINK => ($self->save_tempfiles ? 0 : 1));
+      $aln->set_displayname_flat(1);
+      my $alnout = Bio::AlignIO->new('-format' => 'fasta', '-fh' => $tempseqFH);
+      $alnout->write_aln($aln);
+      $alnout->close();
+      undef $alnout;
+      close($tempseqFH);
    }
    $self->{'_params'}{'tempalnfile'} = $tempalnfile;
    my $outfile = $self->outfile_name || "$tempdir/results.out";
    $self->{'_params'}{'outfile'} = $outfile;
    my ($temptreeFH,$temptreefile);
    if( ! ref($tree) && -e $tree ) {
-       $temptreefile = $tree;
+      $temptreefile = $tree;
    } else {
-       ($temptreeFH,$temptreefile) = $self->io->tempfile
-	   ('-dir' => $tempdir,
-	    UNLINK => ($self->save_tempfiles ? 0 : 1));
-
-       my $treeout = Bio::TreeIO->new('-format' => 'newick',
-				     '-fh'     => $temptreeFH);
-       $treeout->write_tree($tree);
-       $treeout->close();
-       close($temptreeFH);
+      ($temptreeFH,$temptreefile) = $self->io->tempfile('-dir' => $tempdir, UNLINK => ($self->save_tempfiles ? 0 : 1));
+      my $treeout = Bio::TreeIO->new('-format' => 'newick', '-fh' => $temptreeFH);
+      $treeout->write_tree($tree);
+      $treeout->close();
+      close($temptreeFH);
    }
    $self->{'_params'}{'temptreefile'} = $temptreefile;
    $self->create_wrapper;
@@ -207,52 +200,42 @@ sub prepare {
 =cut
 
 sub create_wrapper {
-	my $redirect = "inputRedirect";
-	#my $redirect = "stdinRedirect";
+   my $redirect = "stdinRedirect";
    my ($self,$batchfile) = @_;
    my $tempdir = $self->tempdir;
    $self->update_ordered_parameters;
 # #### DEBUGGING CODE
 #    foreach my $k (keys %$self) {
-# 		print "###$k\n";
-#    		if (exists $self->{$k}) {
-#    			my $type = ref $self->{$k};
-#    			if ($type =~ m/HASH/) {
-# 				foreach my $i (keys %{$self->{$k}}) {
-# 					print "\t###$i: " . $self->{$k}->{$i} . "\n";
-# 				}
-# 			} elsif ($type =~ m/ARRAY/) {
-# 				for (my $i = 0; $i < scalar(@{$self->{$k}}); $i++) {
-# 					print "\t# $i: " . @{$self->{$k}}[$i] . "\n";
-# 				}
-# 			} else {
-# 				print "\t##" . $type . "\n";
-# 			}
-# 		}
+#       print "###$k\n";
+#          if (exists $self->{$k}) {
+#             my $type = ref $self->{$k};
+#             if ($type =~ m/HASH/) {
+#             foreach my $i (keys %{$self->{$k}}) {
+#                print "\t###$i: " . $self->{$k}->{$i} . "\n";
+#             }
+#          } elsif ($type =~ m/ARRAY/) {
+#             for (my $i = 0; $i < scalar(@{$self->{$k}}); $i++) {
+#                print "\t# $i: " . @{$self->{$k}}[$i] . "\n";
+#             }
+#          } else {
+#             print "\t##" . $type . "\n";
+#          }
+#       }
 #    }
 # #### END DEBUGGING CODE
    my $wrapper = "$tempdir/wrapper.bf";
-   open(WRAPPER, ">$wrapper") or $self->throw("cannot open $wrapper for writing");
+   open(WRAPPER, ">", $wrapper) or $self->throw("cannot open $wrapper for writing");
 
-   print WRAPPER "$redirect = \{\};\n\n";
+   print WRAPPER qq{$redirect = {};\n\n};
    my $counter = sprintf("%02d", 0);
    foreach my $elem (@{ $self->{'_orderedparams'} }) {
-		my ($param,$val) = each %$elem;
-		print WRAPPER "$redirect \[\"$counter\"\] = \"$val\";\n";
-		$counter = sprintf("%02d",$counter+1);
+      my ($param,$val) = each %$elem;
+      print WRAPPER qq{$redirect ["$counter"] = "$val";\n};
+      $counter = sprintf("%02d",$counter+1);
    }
-   print WRAPPER "\n" . "ExecuteAFile (" . $batchfile. ", $redirect);" . "\n";
+   print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
 
    close(WRAPPER);
-
-	##### DEBUGGING CODE
-# 	open my $tmpfile, "<$wrapper";
-# 	while (my $line = readline $tmpfile) {
-# 		print $line;
-# 	}
-# 	close $tmpfile;
-	##### END DEBUGGING CODE
-
    $self->{'_wrapper'} = $wrapper;
 }
 
@@ -294,14 +277,14 @@ sub alignment {
    my ($self,$aln) = @_;
 
    if( defined $aln ) {
-       if( -e $aln ) {
-	   $self->{'_alignment'} = $aln;
-       } elsif( !ref($aln) || ! $aln->isa('Bio::Align::AlignI') ) {
-	   $self->warn("Must specify a valid Bio::Align::AlignI object to the alignment function not $aln");
-	   return undef;
-       } else {
-	   $self->{'_alignment'} = $aln;
-       }
+      if( -e $aln ) {
+         $self->{'_alignment'} = $aln;
+      } elsif( !ref($aln) || ! $aln->isa('Bio::Align::AlignI') ) {
+         $self->warn("Must specify a valid Bio::Align::AlignI object to the alignment function not $aln");
+         return undef;
+      } else {
+         $self->{'_alignment'} = $aln;
+      }
    }
    return  $self->{'_alignment'};
 }
@@ -324,10 +307,10 @@ sub alignment {
 sub tree {
    my ($self, $tree, %params) = @_;
    if( defined $tree ) {
-       if( ! ref($tree) || ! $tree->isa('Bio::Tree::TreeI') ) {
-	   $self->warn("Must specify a valid Bio::Tree::TreeI object to the alignment function");
-       }
-       $self->{'_tree'} = $tree;
+      if( ! ref($tree) || ! $tree->isa('Bio::Tree::TreeI') ) {
+         $self->warn("Must specify a valid Bio::Tree::TreeI object to the alignment function");
+      }
+      $self->{'_tree'} = $tree;
    }
    return $self->{'_tree'};
 }
@@ -346,9 +329,6 @@ sub tree {
 sub get_parameters {
    my ($self) = @_;
    # we're returning a copy of this
-#    for my $k (keys %{$self->{'_params'}}) {
-#    		print "## $k, " . $self->{'_params'}->{$k} . "\n";
-#    }
    return %{ $self->{'_params'} };
 }
 
@@ -384,7 +364,7 @@ sub set_parameter {
  Usage   : $hyphy->update_ordered_parameters(0);
  Function: (Re)set the default parameters from the defaults
            (the first value in each array in the
-	    %VALIDVALUES class variable)
+           %VALIDVALUES class variable)
  Returns : none
  Args    : boolean: keep existing parameter values
 
@@ -414,15 +394,15 @@ sub set_parameter {
 # }
 
 sub update_ordered_parameters {
-    my ($self) = @_;
-	for (my $i=0; $i < scalar(@{$self->{'_orderedparams'}}); $i++) {
-		my ($param,$val) = each %{$self->{'_orderedparams'}[$i]};
-		if (exists $self->{'_params'}{$param}) {
-			$self->{'_orderedparams'}[$i] = {$param, $self->{'_params'}{$param}};
-		} else {
-			$self->{'_orderedparams'}[$i] = {$param, $val};
-		}
-	}
+   my ($self) = @_;
+   for (my $i=0; $i < scalar(@{$self->{'_orderedparams'}}); $i++) {
+      my ($param,$val) = each %{$self->{'_orderedparams'}[$i]};
+      if (exists $self->{'_params'}{$param}) {
+         $self->{'_orderedparams'}[$i] = {$param, $self->{'_params'}{$param}};
+      } else {
+         $self->{'_orderedparams'}[$i] = {$param, $val};
+      }
+   }
 }
 
 
@@ -475,12 +455,12 @@ sub no_param_checks {
 =cut
 
 sub outfile_name {
-    my $self = shift;
-    if( @_ ) {
-        print "set outfile to @_\n";
-	return $self->{'_params'}->{'outfile'} = shift @_;
-    }
-    return $self->{'_params'}->{'outfile'};
+   my $self = shift;
+   if( @_ ) {
+      print "set outfile to @_\n";
+      return $self->{'_params'}->{'outfile'} = shift @_;
+   }
+   return $self->{'_params'}->{'outfile'};
 }
 
 =head2 no_param_checks
@@ -537,11 +517,11 @@ sub outfile_name {
 =cut
 
 sub DESTROY {
-    my $self= shift;
-    unless ( $self->save_tempfiles ) {
-	$self->cleanup();
-    }
-    $self->SUPER::DESTROY();
+   my $self= shift;
+   unless ( $self->save_tempfiles ) {
+      $self->cleanup();
+   }
+   $self->SUPER::DESTROY();
 }
 
 1;
