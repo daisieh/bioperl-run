@@ -115,11 +115,6 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 =cut
 
 BEGIN {
-    $PROGRAMNAME = 'HYPHYMP' . ($^O =~ /mswin/i ?'.exe':'');
-    if( defined $ENV{'HYPHYDIR'} ) {
-	$PROGRAM = Bio::Root::IO->catfile($ENV{'HYPHYDIR'},$PROGRAMNAME). ($^O =~ /mswin/i ?'.exe':'');;
-    }
-
     @VALIDVALUES =
         (
          {'tempalnfile' => undef }, # aln file goes here
@@ -129,6 +124,8 @@ BEGIN {
                                         'Hierarchical Test',
                                         'AIC Test'] },
          {'Model rejection level' => '0.05' },
+         {'outfile' => undef },
+         {'aicoutfile' => undef }
         );
 }
 
@@ -200,11 +197,17 @@ sub run {
        my $modeltestexe = $self->executable();
        $self->throw("unable to find or run executable for 'HYPHY'") unless $modeltestexe && -e $modeltestexe && -x _;
        $commandstring = $modeltestexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-       open(RUN, "$commandstring |") or $self->throw("Cannot open exe $modeltestexe");
+       my $pid = open(RUN, "$commandstring |") or $self->throw("Cannot open exe $modeltestexe");
        my @output = <RUN>;
-       $exit_status = close(RUN);
+       waitpid($pid, 0);
+       close(RUN);
        $self->error_string(join('',@output));
-       if( (grep { /\berr(or)?: /io } @output)  || !$exit_status) {
+		my $error = $?;
+		my $exitsig = $? & 127;
+		if ($error != 0) {
+			$self->warn($self->program_name() . " crashed with signal $exitsig");
+		}
+       if($self->error_string =~ m/err/i) {
 	   $self->warn("There was an error - see error_string for the program output");
 	   $rc = 0;
        }
