@@ -242,7 +242,7 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-   my $batchfile = 'YangNielsenBranchSite2005.bf';
+   my $batchfile = "YangNielsenBranchSite2005.bf";
    $self->SUPER::create_wrapper($batchfile);
 }
 

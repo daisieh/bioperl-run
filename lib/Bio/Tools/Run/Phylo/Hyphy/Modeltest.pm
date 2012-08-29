@@ -248,7 +248,7 @@ sub run {
 sub create_wrapper {
    my $self = shift;
 
-   my $batchfile = 'ModelTest.bf';
+   my $batchfile = "ModelTest.bf";
    $self->SUPER::create_wrapper($batchfile);
 }
 
