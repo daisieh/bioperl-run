@@ -275,16 +275,15 @@ sub create_wrapper {
         # but Github source changes suggest that it was sometime
         # after version 0.9920060501 was required.
         if ($version >= 0.9920060501) {
-           print WRAPPER qq{\nExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
+           print WRAPPER qq{\nExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + $batchfile, stdinRedirect);\n};
         } else {
-           print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
+           print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + $batchfile, stdinRedirect);\n};
         }
     } else {
         print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
     }
 
    close(WRAPPER);
-   $self->{'_wrapper'} = $wrapper;
 }
 
 
