@@ -124,7 +124,7 @@ BEGIN {
                                         'Hierarchical Test',
                                         'AIC Test'] },
          {'Model rejection level' => '0.05' },
-         {'outfile' => undef },
+         {'hieoutfile' => undef },
          {'aicoutfile' => undef }
         );
 }
@@ -182,54 +182,17 @@ sub new {
  Args    : L<Bio::Align::AlignI> object,
 	   L<Bio::Tree::TreeI> object [optional]
 
-
 =cut
 
 sub run {
-   my ($self,$aln,$tree) = @_;
+    my $self = shift;
+    my ($rc, $results) = $self->SUPER::run();
+    my $outfile = $self->outfile_name();
 
-   $self->prepare($aln,$tree) unless (defined($self->{'_prepared'}));
-   my ($rc,$results) = (1);
-   {
-       my $commandstring;
-       my $exit_status;
-       my $tempdir = $self->tempdir;
-       my $modeltestexe = $self->executable();
-       $self->throw("unable to find or run executable for 'HYPHY'") unless $modeltestexe && -e $modeltestexe && -x _;
-       $commandstring = $modeltestexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-       my $pid = open(RUN, "$commandstring |") or $self->throw("Cannot open exe $modeltestexe");
-       my @output = <RUN>;
-       waitpid($pid, 0);
-       close(RUN);
-       $self->error_string(join('',@output));
-		my $error = $?;
-		my $exitsig = $? & 127;
-		if ($error != 0) {
-			$self->warn($self->program_name() . " crashed with signal $exitsig");
-		}
-       if($self->error_string =~ m/err/i) {
-	   $self->warn("There was an error - see error_string for the program output");
-	   $rc = 0;
-       }
-       my $outfile = $self->outfile_name;
-       eval {
-	   open(OUTFILE, ">$outfile") or $self->throw("cannot open $outfile for writing");
-           # FIXME -- needs output parsing -- ask hyphy to clean that up into a tsv?
-           foreach my $output (@output) {
-               print OUTFILE $output;
-               $results .= sprintf($output);
-           }
-           close(OUTFILE);
-       };
-       if( $@ ) {
-	   $self->warn($self->error_string);
-       }
-   }
-   unless ( $self->save_tempfiles ) {
-       unlink($self->{'_wrapper'});
-      $self->cleanup();
-   }
-   return ($rc,$results);
+    open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
+    print OUTFILE $results;
+    close(OUTFILE);
+    return ($rc, $results);
 }
 
 
@@ -295,6 +258,7 @@ sub set_default_parameters {
    }
 }
 
+=cut
 
 =head1 Bio::Tools::Run::WrapperBase methods
 
