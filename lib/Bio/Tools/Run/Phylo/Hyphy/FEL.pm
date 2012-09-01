@@ -95,7 +95,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::FEL;
-use vars qw(@ISA @VALIDVALUES $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA $PROGRAMNAME $PROGRAM);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -116,52 +116,7 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 =cut
 
 BEGIN {
-    @VALIDVALUES =
-        (
-         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
-                             "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
-                             "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
-         {'New/Restore' => [ "New Analysis", "Restore"]},
-         {'tempalnfile' => undef }, # aln file goes here
-         {'Model Options' => [ { "Custom" => '010010' },
-                               { "Default" => undef } ]
-         },
-         {'temptreefile' => undef }, # tree file goes here
-         {'Model Fit Results' => [ '/dev/null'] }, # this will not work under Windows
-         {'dN/dS bias parameter' => [ { "Estimate dN/dS only" => undef },
-                                      { "Neutral" => undef },
-                                      { "Estimate" => undef },
-                                      { "Estimate + CI" => undef },
-                                      { "User" => '3' } ] },
-         {'Ancestor Counting' => [ 'Two rate FEL','Single Ancestor Counting','Weighted Ancestor Counting',
-                                  'Sample Ancestal States','Process Sampled Ancestal States',
-                                  'One rate FEL','Rate Distribution',
-                                  'Full site-by-site LRT','Multirate FEL'] },
-         {'Significance level' => '0.05' },
-         {'Branch Options' => ['Internal Only','All','A Subtree only','Custom subset'] },
-         {'outfile' => undef }, # outfile goes here
-        );
 }
-
-=head2 program_name
-
- Title   : program_name
- Usage   : $factory->program_name()
- Function: holds the program name
- Returns:  string
- Args    : None
-
-=cut
-
-=head2 program_dir
-
- Title   : program_dir
- Usage   : ->program_dir()
- Function: returns the program directory, obtained from ENV variable.
- Returns:  string
- Args    :
-
-=cut
 
 =head2 new
 
@@ -202,6 +157,44 @@ sub new {
       }
   }
   return $self;
+}
+
+=head2 valid_values
+
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters.
+ Args    : None
+
+=cut
+
+sub valid_values {
+      return
+        (
+         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
+                             "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
+                             "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
+         {'New/Restore' => [ "New Analysis", "Restore"]},
+         {'tempalnfile' => undef }, # aln file goes here
+         {'Model Options' => [ { "Custom" => '010010' },
+                               { "Default" => undef } ]
+         },
+         {'temptreefile' => undef }, # tree file goes here
+         {'Model Fit Results' => [ '/dev/null'] }, # this will not work under Windows
+         {'dN/dS bias parameter' => [ { "Estimate dN/dS only" => undef },
+                                      { "Neutral" => undef },
+                                      { "Estimate" => undef },
+                                      { "Estimate + CI" => undef },
+                                      { "User" => '3' } ] },
+         {'Ancestor Counting' => [ 'Two rate FEL','Single Ancestor Counting','Weighted Ancestor Counting',
+                                  'Sample Ancestal States','Process Sampled Ancestal States',
+                                  'One rate FEL','Rate Distribution',
+                                  'Full site-by-site LRT','Multirate FEL'] },
+         {'Significance level' => '0.05' },
+         {'Branch Options' => ['Internal Only','All','A Subtree only','Custom subset'] },
+         {'outfile' => undef }, # outfile goes here
+        );
 }
 
 
@@ -288,10 +281,11 @@ sub create_wrapper {
 
 =cut
 
-sub set_default_parameters {
+sub old_set_default_parameters {
    my ($self,$keepold) = @_;
    $keepold = 0 unless defined $keepold;
-   foreach my $elem (@VALIDVALUES) {
+   my @validvals = $self->valid_values();
+   foreach my $elem (@validvals) {
        my ($param,$val) = each %$elem;
        # skip if we want to keep old values and it is already set
        if (ref($val)=~/ARRAY/i ) {
@@ -318,66 +312,6 @@ sub set_default_parameters {
 }
 
 
-=head1 Bio::Tools::Run::WrapperBase methods
-
-=cut
-
-=head2 no_param_checks
-
- Title   : no_param_checks
- Usage   : $obj->no_param_checks($newval)
- Function: Boolean flag as to whether or not we should
-           trust the sanity checks for parameter values
- Returns : value of no_param_checks
- Args    : newvalue (optional)
-
-
-=cut
-
-
-=head2 save_tempfiles
-
- Title   : save_tempfiles
- Usage   : $obj->save_tempfiles($newval)
- Function:
- Returns : value of save_tempfiles
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 tempdir
-
- Title   : tempdir
- Usage   : my $tmpdir = $self->tempdir();
- Function: Retrieve a temporary directory name (which is created)
- Returns : string which is the name of the temporary directory
- Args    : none
-
-
-=cut
-
-=head2 cleanup
-
- Title   : cleanup
- Usage   : $fel->cleanup();
- Function: Will cleanup the tempdir directory after a run
- Returns : none
- Args    : none
-
-
-=cut
-
-=head2 io
-
- Title   : io
- Usage   : $obj->io($newval)
- Function:  Gets a L<Bio::Root::IO> object
- Returns : L<Bio::Root::IO>
- Args    : none
-
-
-=cut
 
 sub DESTROY {
     my $self= shift;

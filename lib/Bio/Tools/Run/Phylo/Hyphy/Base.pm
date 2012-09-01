@@ -80,7 +80,6 @@ use Bio::Root::Root;
 use Bio::AlignIO;
 use Bio::TreeIO;
 use Bio::Tools::Run::WrapperBase;
-
 use base qw(Bio::Root::Root Bio::Tools::Run::WrapperBase);
 
 =head2 Default Values
@@ -95,6 +94,7 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 our $PROGRAMNAME = 'HYPHYMP';
 our $PROGRAM;
+
 
 BEGIN {
    if( defined $ENV{'HYPHYDIR'} ) {
@@ -114,6 +114,21 @@ BEGIN {
 
 sub program_name {
    return $PROGRAMNAME;
+}
+
+=head2 valid_values
+
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters (this needs to be specified per child class).
+           Returns an empty array in the base class.
+ Args    : None
+
+=cut
+
+sub valid_values {
+    return ();
 }
 
 =head2 program_dir
@@ -150,7 +165,6 @@ See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
 
 sub new {
   my($class,@args) = @_;
-
   my $self = $class->SUPER::new(@args);
     my $versionstring = $self->version();
 
@@ -343,7 +357,7 @@ sub run {
         $rc = $? >> 8;
         if (($results =~ m/error/i) || ($rc == 0)) { # either the child process had an error, or HYPHY put one in the output.
             $rc = 0;
-            $self->warn($self->program_name . " reported an error $rc - see error_string for the program output");
+            $self->warn($self->program_name . " reported error $rc - see error_string for the program output");
             $results =~ m/(error.+)/is;
             $self->error_string($1);
         }
@@ -455,7 +469,7 @@ sub get_parameters {
  Title   : set_parameter
  Usage   : $hyphy->set_parameter($param,$val);
  Function: Sets a hyphy parameter, will be validated against
-           the valid values as set in the %VALIDVALUES class variable.
+           the valid values.
            The checks can be ignored if one turns off param checks like this:
              $hyphy->no_param_checks(1)
  Returns : boolean if set was success, if verbose is set to -1
@@ -474,6 +488,51 @@ sub set_parameter {
    $self->{'_params'}{$param} = $value;
    return 1;
 }
+
+=head2 set_default_parameters
+
+ Title   : set_default_parameters
+ Usage   : $obj->set_default_parameters(0);
+ Function: (Re)set the default parameters from the defaults
+           (the first value in each array in the valid_values() array)
+ Returns : none
+ Args    : boolean: keep existing parameter values
+
+
+=cut
+
+
+sub set_default_parameters {
+   my ($self,$keepold) = @_;
+   $keepold = 0 unless defined $keepold;
+   my @validvals = $self->valid_values();
+    foreach my $elem (@validvals) {
+       keys %$elem; #reset hash iterator
+       my ($param,$val) = each %$elem;
+       # skip if we want to keep old values and it is already set
+       if (ref($val)=~/ARRAY/i ) {
+           unless (ref($val->[0])=~/HASH/i) {
+               push @{ $self->{'_orderedparams'} }, {$param, $val->[0]};
+           } else {
+               $val = $val->[0];
+           }
+       }
+       if ( ref($val) =~ /HASH/i ) {
+           my $prevparam;
+           while (defined($val)) {
+               last unless (ref($val) =~ /HASH/i);
+               last unless (defined($param));
+               $prevparam = $param;
+               ($param,$val) = each %{$val};
+               push @{ $self->{'_orderedparams'} }, {$prevparam, $param};
+               push @{ $self->{'_orderedparams'} }, {$param, $val} if (defined($val));
+           }
+       } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) {
+           push @{ $self->{'_orderedparams'} }, {$param, $val};
+       }
+   }
+}
+
 
 =head2 update_ordered_parameters
 

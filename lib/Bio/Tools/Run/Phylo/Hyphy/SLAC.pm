@@ -93,7 +93,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::SLAC;
-use vars qw(@ISA @VALIDVALUES $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA $PROGRAMNAME $PROGRAM);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -109,13 +109,24 @@ Valid and default values for SLAC are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
 
-INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-BEGIN {
-    @VALIDVALUES =
-        (
+=head2 valid_values
+
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters.
+ Args    : None
+
+=cut
+
+
+
+sub valid_values {
+    return
+            (
          {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
                              "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
                              "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
@@ -145,6 +156,7 @@ BEGIN {
         );
 }
 
+
 =head2 new
 
  Title   : new
@@ -166,6 +178,7 @@ sub new {
   my($class,@args) = @_;
 
   my $self = $class->SUPER::new(@args);
+
   my ($aln, $tree, $st, $params, $exe,
       $ubl) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES
 				    PARAMS EXECUTABLE)],
@@ -174,6 +187,7 @@ sub new {
   defined $tree && $self->tree($tree);
   defined $st  && $self->save_tempfiles($st);
   defined $exe && $self->executable($exe);
+
   $self->set_default_parameters();
   if( defined $params ) {
       if( ref($params) !~ /HASH/i ) {
@@ -182,7 +196,6 @@ sub new {
 	  map { $self->set_parameter($_, $$params{$_}) } keys %$params;
       }
   }
-
   return $self;
 }
 
@@ -245,47 +258,6 @@ sub create_wrapper {
    $self->SUPER::create_wrapper($batchfile);
 }
 
-=head2 set_default_parameters
-
- Title   : set_default_parameters
- Usage   : $hyphy->set_default_parameters(0);
- Function: (Re)set the default parameters from the defaults
-           (the first value in each array in the
-	    %VALIDVALUES class variable)
- Returns : none
- Args    : boolean: keep existing parameter values
-
-
-=cut
-
-sub set_default_parameters {
-   my ($self,$keepold) = @_;
-   $keepold = 0 unless defined $keepold;
-   foreach my $elem (@VALIDVALUES) {
-       my ($param,$val) = each %$elem;
-       # skip if we want to keep old values and it is already set
-       if (ref($val)=~/ARRAY/i ) {
-           unless (ref($val->[0])=~/HASH/i) {
-               push @{ $self->{'_orderedparams'} }, {$param, $val->[0]};
-           } else {
-               $val = $val->[0];
-           }
-       }
-       if ( ref($val) =~ /HASH/i ) {
-           my $prevparam;
-           while (defined($val)) {
-               last unless (ref($val) =~ /HASH/i);
-               last unless (defined($param));
-               $prevparam = $param;
-               ($param,$val) = each %{$val};
-               push @{ $self->{'_orderedparams'} }, {$prevparam, $param};
-               push @{ $self->{'_orderedparams'} }, {$param, $val} if (defined($val));
-           }
-       } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) {
-           push @{ $self->{'_orderedparams'} }, {$param, $val};
-       }
-   }
-}
 
 =head1 Bio::Tools::Run::Phylo::Hyphy::Base methods
 
@@ -330,80 +302,6 @@ sub set_default_parameters {
  Returns : value of error_string
  Args    : newvalue (optional)
 
-
-=cut
-
-
-=head2 alignment
-
- Title   : alignment
- Usage   : $slac->align($aln);
- Function: Get/Set the L<Bio::Align::AlignI> object
- Returns : L<Bio::Align::AlignI> object
- Args    : [optional] L<Bio::Align::AlignI>
- Comment : We could potentially add support for running directly on a file
-           but we shall keep it simple
- See also: L<Bio::SimpleAlign>
-
-=cut
-
-
-=head2 tree
-
- Title   : tree
- Usage   : $slac->tree($tree, %params);
- Function: Get/Set the L<Bio::Tree::TreeI> object
- Returns : L<Bio::Tree::TreeI>
- Args    : [optional] $tree => L<Bio::Tree::TreeI>,
-           [optional] %parameters => hash of tree-specific parameters:
-
- Comment : We could potentially add support for running directly on a file
-           but we shall keep it simple
- See also: L<Bio::Tree::Tree>
-
-=cut
-
-=head2 get_parameters
-
- Title   : get_parameters
- Usage   : my %params = $self->get_parameters();
- Function: returns the list of parameters as a hash
- Returns : associative array keyed on parameter names
- Args    : none
-
-
-=cut
-
-=head2 set_parameter
-
- Title   : set_parameter
- Usage   : $slac->set_parameter($param,$val);
- Function: Sets a slac parameter, will be validated against
-           the valid values as set in the %VALIDVALUES class variable.
-           The checks can be ignored if one turns off param checks like this:
-             $slac->no_param_checks(1)
- Returns : boolean if set was success, if verbose is set to -1
-           then no warning will be reported
- Args    : $param => name of the parameter
-           $value => value to set the parameter to
- See also: L<no_param_checks()>
-
-=cut
-
-=head2 set_default_parameters
-
- Title   : set_default_parameters
- Usage   : $slac->set_default_parameters(0);
- Function: (Re)set the default parameters from the defaults
-           (the first value in each array in the
-	    %VALIDVALUES class variable)
- Returns : none
- Args    : boolean: keep existing parameter values
-
-
-=cut
-
-=head1 Bio::Tools::Run::WrapperBase methods
 
 =cut
 

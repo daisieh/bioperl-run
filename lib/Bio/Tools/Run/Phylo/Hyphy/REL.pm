@@ -95,7 +95,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::REL;
-use vars qw(@ISA @VALIDVALUES $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA $PROGRAMNAME $PROGRAM);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -115,8 +115,18 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-BEGIN {
-    @VALIDVALUES =
+=head2 valid_values
+
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters.
+ Args    : None
+
+=cut
+
+sub valid_values {
+    return
         (
          {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
                              "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
@@ -216,110 +226,6 @@ sub create_wrapper {
    my $batchfile = "YangNielsenBranchSite2005.bf";
    $self->SUPER::create_wrapper($batchfile);
 }
-
-
-=head2 set_default_parameters
-
- Title   : set_default_parameters
- Usage   : $rel->set_default_parameters(0);
- Function: (Re)set the default parameters from the defaults
-           (the first value in each array in the %VALIDVALUES class variable)
- Returns : none
- Args    : boolean: keep existing parameter values
-
-
-=cut
-
-sub set_default_parameters {
-   my ($self,$keepold) = @_;
-   $keepold = 0 unless defined $keepold;
-   foreach my $elem (@VALIDVALUES) {
-      keys %$elem; #reset hash iterator
-      my ($param,$val) = each %$elem;
-      # skip if we want to keep old values and it is already set
-      if (ref($val)=~/ARRAY/i ) {
-         unless (ref($val->[0])=~/HASH/i) {
-            push @{ $self->{'_orderedparams'} }, {$param, $val->[0]};
-         } else {
-            $val = $val->[0];
-         }
-      }
-      if ( ref($val) =~ /HASH/i ) {
-         my $prevparam;
-         while (defined($val)) {
-            last unless (ref($val) =~ /HASH/i);
-            last unless (defined($param));
-            $prevparam = $param;
-            ($param,$val) = each %{$val};
-            push @{ $self->{'_orderedparams'} }, {$prevparam, $param};
-            push @{ $self->{'_orderedparams'} }, {$param, $val} if (defined($val));
-         }
-      } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) {
-         push @{ $self->{'_orderedparams'} }, {$param, $val};
-      }
-   }
-}
-
-
-=head1 Bio::Tools::Run::WrapperBase methods
-
-=cut
-
-=head2 no_param_checks
-
- Title   : no_param_checks
- Usage   : $obj->no_param_checks($newval)
- Function: Boolean flag as to whether or not we should
-           trust the sanity checks for parameter values
- Returns : value of no_param_checks
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 save_tempfiles
-
- Title   : save_tempfiles
- Usage   : $obj->save_tempfiles($newval)
- Function:
- Returns : value of save_tempfiles
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 tempdir
-
- Title   : tempdir
- Usage   : my $tmpdir = $self->tempdir();
- Function: Retrieve a temporary directory name (which is created)
- Returns : string which is the name of the temporary directory
- Args    : none
-
-
-=cut
-
-=head2 cleanup
-
- Title   : cleanup
- Usage   : $rel->cleanup();
- Function: Will cleanup the tempdir directory after a run
- Returns : none
- Args    : none
-
-
-=cut
-
-=head2 io
-
- Title   : io
- Usage   : $obj->io($newval)
- Function:  Gets a L<Bio::Root::IO> object
- Returns : L<Bio::Root::IO>
- Args    : none
-
-
-=cut
 
 sub DESTROY {
     my $self= shift;
