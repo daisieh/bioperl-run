@@ -186,46 +186,17 @@ sub new {
 =cut
 
 sub run {
-   my ($self,$aln,$tree) = @_;
+    my $self = shift;
+   my ($rc,$results) = $self->SUPER::run();
 
-   $self->prepare($aln,$tree) unless (defined($self->{'_prepared'}));
-   my ($rc,$results) = (1);
-   {
-      my $commandstring;
-      my $exit_status;
-      my $tempdir = $self->tempdir;
-
-      my $relexe = $self->executable();
-      $self->throw("unable to find or run executable for 'HYPHY'") unless $relexe && -e $relexe && -x _;
-      $commandstring = $relexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-      open(RUN, "$commandstring |") or $self->throw("Cannot open exe $relexe");
-      my @output = <RUN>;
-      $exit_status = close(RUN);
-      $self->error_string(join('',@output));
-      if( (grep { /\berr(or)?: /io } @output)  || !$exit_status) {
-         $self->warn("There was an error - see error_string for the program output");
-         $rc = 0;
-      }
-      my $outfile = $self->outfile_name;
-      eval {
-         open(OUTFILE, ">$outfile") or $self->throw("cannot open $outfile for writing");
-         foreach my $output (@output) {
-            print OUTFILE $output;
-            $results .= sprintf($output);
-         }
-         close(OUTFILE);
-      };
-      if( $@ ) {
-         $self->warn($self->error_string);
-      }
-   }
-   unless ( $self->save_tempfiles ) {
-       unlink($self->{'_wrapper'});
-      $self->cleanup();
-   }
-   return ($rc,$results);
+    my $outfile = $self->outfile_name;
+    eval {
+        open(OUTFILE, ">$outfile") or $self->throw("cannot open $outfile for writing");
+        print OUTFILE $results;
+        close(OUTFILE);
+    };
+    return ($rc,$results);
 }
-
 
 =head2 create_wrapper
 

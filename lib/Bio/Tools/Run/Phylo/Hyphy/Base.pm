@@ -93,7 +93,7 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-our $PROGRAMNAME = 'HYPHYSP';
+our $PROGRAMNAME = 'HYPHYMP';
 our $PROGRAM;
 
 BEGIN {
@@ -196,8 +196,11 @@ sub prepare {
       close($tempseqFH);
    }
    $self->{'_params'}{'tempalnfile'} = $tempalnfile;
-   my $outfile = $self->outfile_name || "$tempdir/results.tsv";
-   $self->{'_params'}{'outfile'} = $outfile;
+   my $outfile = $self->outfile_name;
+   if ($outfile eq "") {
+        $outfile = "$tempdir/results.tsv";
+       $self->outfile_name($outfile);
+    }
    my ($temptreeFH,$temptreefile);
    if( ! ref($tree) && -e $tree ) {
       $temptreefile = $tree;
@@ -238,25 +241,6 @@ sub create_wrapper {
    $versionstring =~ /.*?(\d+\.\d+).*/;
    my $version = $1;
 
-# #### DEBUGGING CODE
-#    foreach my $k (keys %$self) {
-#       print "###$k\n";
-#          if (exists $self->{$k}) {
-#             my $type = ref $self->{$k};
-#             if ($type =~ m/HASH/) {
-#             foreach my $i (keys %{$self->{$k}}) {
-#                print "\t###$i: " . $self->{$k}->{$i} . "\n";
-#             }
-#          } elsif ($type =~ m/ARRAY/) {
-#             for (my $i = 0; $i < scalar(@{$self->{$k}}); $i++) {
-#                print "\t# $i: " . @{$self->{$k}}[$i] . "\n";
-#             }
-#          } else {
-#             print "\t##" . $type . "\n";
-#          }
-#       }
-#    }
-# #### END DEBUGGING CODE
    my $wrapper = "$tempdir/wrapper.bf";
    open(WRAPPER, ">", $wrapper) or $self->throw("cannot open $wrapper for writing");
 
@@ -264,6 +248,9 @@ sub create_wrapper {
    my $counter = sprintf("%02d", 0);
    foreach my $elem (@{ $self->{'_orderedparams'} }) {
       my ($param,$val) = each %$elem;
+      if ($val eq "") {
+        $val = "$tempdir/$param"; # any undefined parameters must be temporary output files.
+      }
       print WRAPPER qq{$redirect ["$counter"] = "$val";\n};
       $counter = sprintf("%02d",$counter+1);
    }
@@ -274,17 +261,100 @@ sub create_wrapper {
         # Not exactly sure what version of HYPHY caused this change,
         # but Github source changes suggest that it was sometime
         # after version 0.9920060501 was required.
+        $batchfile =~ s/"//g; # remove any extra quotes in the batchfile name.
         if ($version >= 0.9920060501) {
-           print WRAPPER qq{\nExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + $batchfile, stdinRedirect);\n};
+           print WRAPPER qq{\nExecuteAFile (HYPHY_LIB_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
         } else {
-           print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + $batchfile, stdinRedirect);\n};
+           print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
         }
     } else {
         print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
     }
 
    close(WRAPPER);
+   $self->{'_wrapper'} = $wrapper;
+#   #### DEBUGGING CODE:
+#    open WRAPPER, "<", $wrapper;
+#    while (my $line = <WRAPPER>) {
+#         print $line;
+#    }
+#    close WRAPPER;
+#   #### END DEBUGGING CODE
 }
+
+
+=head2 run
+
+ Title   : run
+ Usage   : my ($rc,$results) = $BatchFile->run();
+ Function: run the Hyphy analysis using the specified batchfile and its ordered parameters
+ Returns : Return code, Hash
+ Args    : none
+
+
+=cut
+
+sub run {
+    my ($self) = @_;
+
+    my $aln = $self->alignment;
+    my $tree = $self->tree;
+    unless (defined($self->{'_prepared'})) {
+        $self->prepare($aln,$tree);
+    }
+    my $rc = 1;
+    my $results = "";
+    my $commandstring;
+    my $error_msg;
+    my $output_str = "";
+    my $exe = $self->executable();
+    unless ($exe && -e $exe && -x _) {
+        $self->throw("unable to find or run executable for 'HYPHY'");
+    }
+
+    my $kid_pid = open (KID, "-|"); # forks two processes; the child is for handling just the HYPHY exec.
+    unless ($kid_pid) { # child
+        #runs the HYPHY command
+        $commandstring = $exe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
+        my $pid = open(RUN, "-|", "$commandstring") or $self->throw("Cannot open exe $exe");
+
+        my $waiting = waitpid $pid,0;
+        # waitpid will leave a nonzero error in $? if the HYPHY command crashes, so we should bail gracefully.
+        my $error = $? & 127;
+        if ($error != 0) {
+            print "Error: " . $self->program_name . " ($waiting) quit unexpectedly with signal $error";
+            exit 0; # exit with 0 so that the parent knows HYPHY aborted.
+        }
+        #otherwise, return the results and exit with 1 so that the parent knows we were successful.
+        while (my $line = <RUN>) {
+            $results .= "$line";
+        }
+        close(RUN);
+        print $results;
+        exit 1;
+    } else { # parent
+        # read in the results from the child process
+        while (my $line = <KID>) {
+            $results .= "$line";
+        }
+        close KID;
+
+        # process the errors from $? and set the error values.
+        $rc = $? >> 8;
+        if (($results =~ m/error/i) || ($rc == 0)) { # either the child process had an error, or HYPHY put one in the output.
+            $rc = 0;
+            $self->warn($self->program_name . " reported an error $rc - see error_string for the program output");
+            $results =~ m/(error.+)/is;
+            $self->error_string($1);
+        }
+        unless ( $self->save_tempfiles ) {
+            unlink($self->{'_wrapper'});
+            $self->cleanup();
+        }
+    }
+    return ($rc,$results);
+}
+
 
 
 =head2 error_string

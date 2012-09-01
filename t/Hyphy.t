@@ -39,7 +39,7 @@ SKIP: {
 		warn("ERROR in SLAC module $rc:" . $slac->error_string() . "\n");
 	}
 	ok ($rc != 0, "SLAC module");
-
+#
 	my $rel = Bio::Tools::Run::Phylo::Hyphy::REL->new();
 	$rel->alignment($aln);
 	$rel->tree($tree);
@@ -48,7 +48,7 @@ SKIP: {
 		warn("ERROR in REL module $rc:" . $rel->error_string() . "\n");
 	}
 	ok ($rc != 0, "REL module");
-
+#
 	my $fel = Bio::Tools::Run::Phylo::Hyphy::FEL->new();
 	$fel->alignment($aln);
 	$fel->tree($tree);
@@ -57,10 +57,12 @@ SKIP: {
 		warn("ERROR in FEL module $rc:" . $fel->error_string() . "\n");
 	}
 	ok ($rc != 0, "FEL module");
-
+#
 	my $modeltest = Bio::Tools::Run::Phylo::Hyphy::Modeltest->new();
 	$modeltest->alignment($aln);
 	$modeltest->tree($tree);
+	$modeltest->save_tempfiles(1);
+# 	$modeltest->outfile_name("/Users/daisie/Desktop/test.out");
 	($rc,$results) = $modeltest->run();
 	if (($rc == 0) && ($debug == 1)){
 		warn("ERROR in Modeltest module $rc:" . $modeltest->error_string() . "\n");
