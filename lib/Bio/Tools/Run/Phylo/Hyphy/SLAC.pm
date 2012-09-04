@@ -93,7 +93,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::SLAC;
-use vars qw(@ISA $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -105,10 +105,11 @@ use Bio::Tools::Run::WrapperBase;
 
 =head2 Default Values
 
-Valid and default values for SLAC are listed below.  The default
+Valid and default values for Modeltest are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
 
+INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
@@ -117,7 +118,9 @@ essentially lifted from the python wrapper or provided by the author.
  Title   : valid_values
  Usage   : $factory->valid_values()
  Function: returns the possible parameters
- Returns:  an array holding all possible parameters.
+ Returns:  an array holding all possible parameters. The default
+values are always the first one listed.  These descriptions are
+essentially lifted from the python wrapper or provided by the author.
  Args    : None
 
 =cut
@@ -215,27 +218,28 @@ sub new {
 
 sub run {
     my $self = shift;
-    my ($rc, $results) = $self->SUPER::run();
-    my $outfile = $self->outfile_name();
+    my $results = ();
+    my ($rc, $run_output) = $self->SUPER::run();
 
-       eval {
-	       open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
-           my $readed_header = 0;
-           my @elems;
-           while (<OUTFILE>) {
-               if ($readed_header) {
-                   # FEL results are tsv
-                   my @values = split("\t",$_);
-                   for my $i (0 .. (scalar(@values)-1)) {
-                       $elems[$i] =~ s/\n//g;
-                       push @{$results->{$elems[$i]}}, $values[$i];
-                   }
-               } else {
-                   @elems = split("\t",$_);
-                   $readed_header = 1;
+    my $outfile = $self->outfile_name();
+    eval {
+       open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
+       my $readed_header = 0;
+       my @elems;
+       while (my $line = <OUTFILE>) {
+           if ($readed_header) {
+               # SLAC results are tsv
+               my @values = split("\t",$line);
+               for my $i (0 .. (scalar(@values)-1)) {
+                   $elems[$i] =~ s/\n//g;
+                   push @{$results->{$elems[$i]}}, $values[$i];
                }
+           } else {
+               @elems = split("\t",$line);
+               $readed_header = 1;
            }
-       };
+       }
+    };
     return ($rc, $results);
 }
 
@@ -256,106 +260,6 @@ sub create_wrapper {
 
    my $batchfile = "QuickSelectionDetection.bf";
    $self->SUPER::create_wrapper($batchfile);
-}
-
-
-=head1 Bio::Tools::Run::Phylo::Hyphy::Base methods
-
-=head2 program_name
-
- Title   : program_name
- Usage   : $factory->program_name()
- Function: holds the program name
- Returns:  string
- Args    : None
-
-=cut
-
-=head2 program_dir
-
- Title   : program_dir
- Usage   : ->program_dir()
- Function: returns the program directory, obtained from ENV variable.
- Returns:  string
- Args    :
-
-=cut
-
-=head2 prepare
-
- Title   : prepare
- Usage   : my $rundir = $slac->prepare($aln);
- Function: prepare the slac analysis using the default or updated parameters
-           the alignment parameter must have been set
- Returns : value of rundir
- Args    : L<Bio::Align::AlignI> object,
-	   L<Bio::Tree::TreeI> object [optional]
-
-=cut
-
-
-=head2 error_string
-
- Title   : error_string
- Usage   : $obj->error_string($newval)
- Function: Where the output from the last analysus run is stored.
- Returns : value of error_string
- Args    : newvalue (optional)
-
-
-=cut
-
-
-=head2 save_tempfiles
-
- Title   : save_tempfiles
- Usage   : $obj->save_tempfiles($newval)
- Function:
- Returns : value of save_tempfiles
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 tempdir
-
- Title   : tempdir
- Usage   : my $tmpdir = $self->tempdir();
- Function: Retrieve a temporary directory name (which is created)
- Returns : string which is the name of the temporary directory
- Args    : none
-
-
-=cut
-
-=head2 cleanup
-
- Title   : cleanup
- Usage   : $slac->cleanup();
- Function: Will cleanup the tempdir directory after a run
- Returns : none
- Args    : none
-
-
-=cut
-
-=head2 io
-
- Title   : io
- Usage   : $obj->io($newval)
- Function:  Gets a L<Bio::Root::IO> object
- Returns : L<Bio::Root::IO>
- Args    : none
-
-
-=cut
-
-sub DESTROY {
-    my $self= shift;
-    unless ( $self->save_tempfiles ) {
-	$self->cleanup();
-    }
-    $self->SUPER::DESTROY();
 }
 
 1;

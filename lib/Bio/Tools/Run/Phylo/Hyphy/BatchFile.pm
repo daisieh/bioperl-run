@@ -72,22 +72,28 @@ use Bio::Tools::Run::WrapperBase;
 
 use base qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 
-=head2 Default Values
+=head2 valid_values
 
-Valid and default values for BatchFile are listed below.  The default
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters. The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
+ Args    : None
 
 =cut
 
-our @VALIDVALUES =
-    (
+
+sub valid_values {
+    return (
         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
                          "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
                          "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
         {'tempalnfile' => undef }, # aln file goes here
         {'temptreefile' => undef }, # tree file goes here
     );
+}
 
 =head2 new
 
@@ -169,72 +175,13 @@ sub update_ordered_parameters {
 =cut
 
 sub run {
-    my ($self) = @_;
-
-    my $aln = $self->alignment;
-    my $tree = $self->tree;
-    unless (defined($self->{'_prepared'})) {
-        $self->prepare($aln,$tree);
-    }
-    unless (defined($self->{'_params'}{'bf'})) {
-        $self->throw("no custom batch file specified!");
-    }
-    my $rc = 1;
-    my $results = "";
-    my $commandstring;
-    my $error_msg;
-    my $output_str = "";
-    my $BatchFileexe = $self->executable();
-    my $outfile = $self->outfile_name;
-    unless ($BatchFileexe && -e $BatchFileexe && -x _) {
-        $self->throw("unable to find or run executable for 'HYPHY'");
-    }
-
-    my $kid_pid = open (KID, "-|"); # forks two processes; the child is for handling just the HYPHY exec.
-    unless ($kid_pid) { # child
-        #runs the HYPHY command
-        $commandstring = $BatchFileexe . " BASEPATH=" . $self->program_dir . " " . $self->{'_wrapper'};
-        my $pid = open(RUN, "-|", "$commandstring") or $self->throw("Cannot open exe $BatchFileexe");
-
-        my $waiting = waitpid $pid,0;
-        # waitpid will leave a nonzero error in $? if the HYPHY command crashes, so we should bail gracefully.
-        my $error = $? & 127;
-        if ($error != 0) {
-            print "Error: " . $self->program_name . " ($waiting) quit unexpectedly with signal $error";
-            exit 0; # exit with 0 so that the parent knows HYPHY aborted.
-        }
-        #otherwise, return the results and exit with 1 so that the parent knows we were successful.
-        while (my $line = <RUN>) {
-            $results .= "$line";
-        }
-        close(RUN);
-        print $results;
-        exit 1;
-    } else { # parent
-        # read in the results from the child process
-        while (my $line = <KID>) {
-            $results .= "$line";
-        }
-        close KID;
-
-        # process the errors from $? and set the error values.
-        $rc = $? >> 8;
-        if (($results =~ m/err/i) || ($rc == 0)) { # either the child process had an error, or HYPHY put one in the output.
-            $rc = 0;
-            $self->warn($self->program_name . " reported an error - see error_string for the program output");
-            $results =~ m/(err.+)/is;
-            $self->error_string($1);
-        }
-        open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
-        print OUTFILE $results;
-        close(OUTFILE);
-
-        unless ( $self->save_tempfiles ) {
-            unlink($self->{'_wrapper'});
-            $self->cleanup();
-        }
-    }
-
+    my $self = shift;
+    my ($rc, $results) = $self->SUPER::run();
+    my $outfile = $self->outfile_name();
+    print "###$outfile\n";
+    open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
+    print OUTFILE $results;
+    close(OUTFILE);
     return ($rc,$results);
 }
 
@@ -286,7 +233,7 @@ sub set_parameter {
  Usage   : $BatchFile->set_default_parameters(0);
  Function: (Re)set the default parameters from the defaults
            (the first value in each array in the
-            @VALIDVALUES class variable)
+            valid_values)
  Returns : none
  Args    : boolean: keep existing parameter values
 
@@ -298,8 +245,9 @@ sub set_default_parameters {
     unless (defined $keepold) {
         $keepold = 0;
     }
-    for (my $i=0; $i< scalar (@VALIDVALUES); $i++) {
-        my $elem = @VALIDVALUES[$i];
+    my @validvals = $self->valid_values();
+    for (my $i=0; $i< scalar (@validvals); $i++) {
+        my $elem = @validvals[$i];
         keys %$elem; #reset hash iterator
         my ($param,$val) = each %$elem;
         # skip if we want to keep old values and it is already set

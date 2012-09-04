@@ -95,7 +95,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::REL;
-use vars qw(@ISA $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -105,25 +105,19 @@ use Bio::Tools::Run::WrapperBase;
 
 @ISA = qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 
-=head2 Default Values
-
-Valid and default values for REL are listed below.  The default
-values are always the first one listed.  These descriptions are
-essentially lifted from the python wrapper or provided by the author.
-
-INCOMPLETE DOCUMENTATION OF ALL METHODS
-
-=cut
 
 =head2 valid_values
 
  Title   : valid_values
  Usage   : $factory->valid_values()
  Function: returns the possible parameters
- Returns:  an array holding all possible parameters.
+ Returns:  an array holding all possible parameters. The default
+values are always the first one listed.  These descriptions are
+essentially lifted from the python wrapper or provided by the author.
  Args    : None
 
 =cut
+
 
 sub valid_values {
     return
@@ -227,12 +221,5 @@ sub create_wrapper {
    $self->SUPER::create_wrapper($batchfile);
 }
 
-sub DESTROY {
-    my $self= shift;
-    unless ( $self->save_tempfiles ) {
-   $self->cleanup();
-    }
-    $self->SUPER::DESTROY();
-}
 
 1;

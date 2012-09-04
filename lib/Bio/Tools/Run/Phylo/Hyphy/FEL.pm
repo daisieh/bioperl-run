@@ -95,7 +95,7 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::FEL;
-use vars qw(@ISA $PROGRAMNAME $PROGRAM);
+use vars qw(@ISA);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -103,11 +103,11 @@ use Bio::TreeIO;
 use Bio::Tools::Run::Phylo::Hyphy::Base;
 use Bio::Tools::Run::WrapperBase;
 
-@ISA = qw(Bio::Tools::Run::Phylo::Hyphy::Base);
+@ISA = qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 
 =head2 Default Values
 
-Valid and default values for FEL are listed below.  The default
+Valid and default values for Modeltest are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
 
@@ -115,8 +115,47 @@ INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
-BEGIN {
+=head2 valid_values
+
+ Title   : valid_values
+ Usage   : $factory->valid_values()
+ Function: returns the possible parameters
+ Returns:  an array holding all possible parameters. The default
+values are always the first one listed.  These descriptions are
+essentially lifted from the python wrapper or provided by the author.
+ Args    : None
+
+=cut
+
+
+sub valid_values {
+      return
+        (
+         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
+                             "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
+                             "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
+         {'New/Restore' => [ "New Analysis", "Restore"]},
+         {'tempalnfile' => undef }, # aln file goes here
+         {'Model Options' => [ { "Custom" => '010010' },
+                               { "Default" => undef } ]
+         },
+         {'temptreefile' => undef }, # tree file goes here
+         {'Model Fit Results' => [ '/dev/null'] }, # this will not work under Windows
+         {'dN/dS bias parameter' => [ { "Estimate dN/dS only" => undef },
+                                      { "Neutral" => undef },
+                                      { "Estimate" => undef },
+                                      { "Estimate + CI" => undef },
+                                      { "User" => '3' } ] },
+         {'Ancestor Counting' => [ 'Two rate FEL','Single Ancestor Counting','Weighted Ancestor Counting',
+                                  'Sample Ancestal States','Process Sampled Ancestal States',
+                                  'One rate FEL','Rate Distribution',
+                                  'Full site-by-site LRT','Multirate FEL'] },
+         {'Significance level' => '0.05' },
+         {'Branch Options' => ['Internal Only','All','A Subtree only','Custom subset'] },
+         {'outfile' => undef }, # outfile goes here
+        );
 }
+
 
 =head2 new
 
@@ -159,45 +198,6 @@ sub new {
   return $self;
 }
 
-=head2 valid_values
-
- Title   : valid_values
- Usage   : $factory->valid_values()
- Function: returns the possible parameters
- Returns:  an array holding all possible parameters.
- Args    : None
-
-=cut
-
-sub valid_values {
-      return
-        (
-         {'geneticCode' => [ "Universal","VertebratemtDNA","YeastmtDNA","Mold/ProtozoanmtDNA",
-                             "InvertebratemtDNA","CiliateNuclear","EchinodermmtDNA","EuplotidNuclear",
-                             "Alt.YeastNuclear","AscidianmtDNA","FlatwormmtDNA","BlepharismaNuclear"]},
-         {'New/Restore' => [ "New Analysis", "Restore"]},
-         {'tempalnfile' => undef }, # aln file goes here
-         {'Model Options' => [ { "Custom" => '010010' },
-                               { "Default" => undef } ]
-         },
-         {'temptreefile' => undef }, # tree file goes here
-         {'Model Fit Results' => [ '/dev/null'] }, # this will not work under Windows
-         {'dN/dS bias parameter' => [ { "Estimate dN/dS only" => undef },
-                                      { "Neutral" => undef },
-                                      { "Estimate" => undef },
-                                      { "Estimate + CI" => undef },
-                                      { "User" => '3' } ] },
-         {'Ancestor Counting' => [ 'Two rate FEL','Single Ancestor Counting','Weighted Ancestor Counting',
-                                  'Sample Ancestal States','Process Sampled Ancestal States',
-                                  'One rate FEL','Rate Distribution',
-                                  'Full site-by-site LRT','Multirate FEL'] },
-         {'Significance level' => '0.05' },
-         {'Branch Options' => ['Internal Only','All','A Subtree only','Custom subset'] },
-         {'outfile' => undef }, # outfile goes here
-        );
-}
-
-
 =head2 run
 
  Title   : run
@@ -215,24 +215,24 @@ sub run {
     my $self = shift;
     my ($rc, $results) = $self->SUPER::run();
     my $outfile = $self->outfile_name();
-       eval {
-	   open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
-           my $readed_header = 0;
-           my @elems;
-           while (<OUTFILE>) {
-               if ($readed_header) {
-                   # FEL results are csv
-                   my @values = split("\,",$_);
-                   for my $i (0 .. (scalar(@values)-1)) {
-                       $elems[$i] =~ s/\n//g;
-                       push @{$results->{$elems[$i]}}, $values[$i];
-                   }
-               } else {
-                   @elems = split("\,",$_);
-                   $readed_header = 1;
+    eval {
+        open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
+        my $readed_header = 0;
+        my @elems;
+        while (<OUTFILE>) {
+            if ($readed_header) {
+               # FEL results are csv
+               my @values = split("\,",$_);
+               for my $i (0 .. (scalar(@values)-1)) {
+                   $elems[$i] =~ s/\n//g;
+                   push @{$results->{$elems[$i]}}, $values[$i];
                }
-           }
-       };
+            } else {
+               @elems = split("\,",$_);
+               $readed_header = 1;
+            }
+        }
+    };
     return ($rc, $results);
 }
 
@@ -256,69 +256,5 @@ sub create_wrapper {
    $self->SUPER::create_wrapper($batchfile);
 }
 
-
-=head2 error_string
-
- Title   : error_string
- Usage   : $obj->error_string($newval)
- Function: Where the output from the last analysus run is stored.
- Returns : value of error_string
- Args    : newvalue (optional)
-
-
-=cut
-
-=head2 set_default_parameters
-
- Title   : set_default_parameters
- Usage   : $fel->set_default_parameters(0);
- Function: (Re)set the default parameters from the defaults
-           (the first value in each array in the
-	    %VALIDVALUES class variable)
- Returns : none
- Args    : boolean: keep existing parameter values
-
-
-=cut
-
-sub old_set_default_parameters {
-   my ($self,$keepold) = @_;
-   $keepold = 0 unless defined $keepold;
-   my @validvals = $self->valid_values();
-   foreach my $elem (@validvals) {
-       my ($param,$val) = each %$elem;
-       # skip if we want to keep old values and it is already set
-       if (ref($val)=~/ARRAY/i ) {
-           unless (ref($val->[0])=~/HASH/i) {
-               push @{ $self->{'_orderedparams'} }, {$param, $val->[0]};
-           } else {
-               $val = $val->[0];
-           }
-       }
-       if ( ref($val) =~ /HASH/i ) {
-           my $prevparam;
-           while (defined($val)) {
-               last unless (ref($val) =~ /HASH/i);
-               last unless (defined($param));
-               $prevparam = $param;
-               ($param,$val) = each %{$val};
-               push @{ $self->{'_orderedparams'} }, {$prevparam, $param};
-               push @{ $self->{'_orderedparams'} }, {$param, $val} if (defined($val));
-           }
-       } elsif (ref($val) !~ /HASH/i && ref($val) !~ /ARRAY/i) {
-           push @{ $self->{'_orderedparams'} }, {$param, $val};
-       }
-   }
-}
-
-
-
-sub DESTROY {
-    my $self= shift;
-    unless ( $self->save_tempfiles ) {
-	$self->cleanup();
-    }
-    $self->SUPER::DESTROY();
-}
 
 1;
