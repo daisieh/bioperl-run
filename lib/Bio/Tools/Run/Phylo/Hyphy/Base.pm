@@ -76,12 +76,11 @@ Internal methods are usually preceded with a _
 
 package Bio::Tools::Run::Phylo::Hyphy::Base;
 use strict;
-# use Bio::Root::Root;
+use Bio::Root::Root;
 use Bio::AlignIO;
 use Bio::TreeIO;
 use Bio::Tools::Run::WrapperBase;
-use base qw(Bio::Tools::Run::WrapperBase);
-#use base qw(Bio::Root::Root Bio::Tools::Run::WrapperBase);
+use base qw(Bio::Root::Root Bio::Tools::Run::WrapperBase);
 
 =head2 Default Values
 
@@ -212,8 +211,6 @@ sub prepare {
    }
    $self->{'_params'}{'tempalnfile'} = $tempalnfile;
     # setting a new temp file to hold the run output for debugging
-#    my ($temprunFH,$temprunfile) = $self->io->tempfile('-dir' => $tempdir, UNLINK => ($self->save_tempfiles ? 0 : 1));
-#    $self->{'run_output'} = $temprunfile;
    $self->{'run_output'} = "$tempdir/run_output";
    my $outfile = $self->outfile_name;
    if ($outfile eq "") {
@@ -353,7 +350,6 @@ sub run {
     }
 
     # put these run results into the temp run output file:
-    print "putting out " . $self->{'run_output'} . "\n";
     open (OUT, ">", $self->{'run_output'});
     print OUT $results;
     close OUT;
@@ -569,11 +565,6 @@ sub outfile_name {
    return $self->{'_params'}->{'outfile'};
 }
 
-
-=head1 Bio::Tools::Run::WrapperBase methods
-
-=cut
-
 =head2 version
 
  Title   : version
@@ -607,17 +598,6 @@ sub version {
     unlink $versionbf;
     $self->{'_version'} = $output;
     return $output;
-}
-
-sub oldDESTROY {
-    my $self= shift;
-    print "DESTROY base " . $self . " save_tempfiles = " . $self->save_tempfiles . "\n";
-    if ( $self->save_tempfiles == 0 ) {
-        print "deleting " . $self->tempdir() . "\n";
-        unlink($self->{'_wrapper'});
-        $self->cleanup();
-    } else { print "leaving " . $self->tempdir() . " alone\n"; }
-    $self->SUPER::DESTROY();
 }
 
 1;
