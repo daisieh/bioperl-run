@@ -588,18 +588,23 @@ sub outfile_name {
 sub version {
     my $self = shift;
     my $tempdir = $self->tempdir;
-    my $wrapper = "$tempdir/version.bf";
-    open(WRAPPER, ">$wrapper") or $self->throw("cannot open $wrapper for writing");
+    if (defined $self->{'_version'}) {
+        return $self->{'_version'};
+    }
+    # if it's not already defined, write out a small batchfile to return the version string, then clean up.
+    my $versionbf = "$tempdir/version.bf";
+    open(WRAPPER, ">$versionbf") or $self->throw("cannot open $versionbf for writing");
     print WRAPPER qq{GetString (versionString, HYPHY_VERSION, 2);\nfprintf (stdout, versionString);};
     close(WRAPPER);
     my $exe = $self->executable();
     unless ($exe && -e $exe && -x _) {
         $self->throw("unable to find or run executable for 'HYPHY'");
     }
-    my $commandstring = $exe . " BASEPATH=" . $self->program_dir . " " . $wrapper;
+    my $commandstring = $exe . " BASEPATH=" . $self->program_dir . " " . $versionbf;
     open(RUN, "$commandstring |") or $self->throw("Cannot open exe $exe");
     my $output = <RUN>;
     close(RUN);
+    unlink $versionbf;
     $self->{'_version'} = $output;
     return $output;
 }

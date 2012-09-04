@@ -93,7 +93,6 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::SLAC;
-use vars qw(@ISA);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -101,7 +100,7 @@ use Bio::TreeIO;
 use Bio::Tools::Run::Phylo::Hyphy::Base;
 use Bio::Tools::Run::WrapperBase;
 
-@ISA = qw(Bio::Tools::Run::Phylo::Hyphy::Base);
+use base qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 
 =head2 Default Values
 

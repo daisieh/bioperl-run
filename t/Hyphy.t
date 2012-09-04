@@ -76,6 +76,8 @@ SKIP: {
 	$bf_exec->alignment($aln);
 	$bf_exec->tree($tree);
  	$bf_exec->save_tempfiles(1);
+ 	$bf_exec->set_parameter(4, $bf_exec->tempdir() . "/output");
+ 	$bf_exec->version();
  	($rc,$results) = $bf_exec->run();
 	if (($rc == 0) && ($debug == 1)){
 		warn("ERROR in Batchfile module $rc:" . $bf_exec->error_string() . "\n");
