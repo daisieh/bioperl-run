@@ -95,7 +95,6 @@ Internal methods are usually preceded with a _
 
 
 package Bio::Tools::Run::Phylo::Hyphy::REL;
-use vars qw(@ISA);
 use strict;
 use Bio::Root::Root;
 use Bio::AlignIO;
@@ -128,7 +127,7 @@ sub valid_values {
          {'tempalnfile' => undef }, # aln file goes here
          {'temptreefile' => undef }, # tree file goes here
          {'Model' => [ "Null for Test 1", "Null for Test 2", "Alternative"]},
-         {'temptsvfile' => undef } # site-by-site conditional probabilities go to this file
+         {'outfile' => undef } # site-by-site conditional probabilities go to this file
         );
 }
 
@@ -160,9 +159,7 @@ sub new {
    defined $st  && $self->save_tempfiles($st);
    defined $exe && $self->executable($exe);
 
-   my $tsvfile = $self->tempdir() . "/results.tsv";
-   $self->{'_params'}{'temptsvfile'} = $tsvfile;
-
+   #my $tsvfile = $self->tempdir() . "/results.tsv";
 
    $self->set_default_parameters();
    if( defined $params ) {
@@ -191,14 +188,25 @@ sub new {
 
 sub run {
     my $self = shift;
-   my ($rc,$results) = $self->SUPER::run();
-
-    my $outfile = $self->outfile_name;
-    eval {
-        open(OUTFILE, ">$outfile") or $self->throw("cannot open $outfile for writing");
-        print OUTFILE $results;
-        close(OUTFILE);
-    };
+    my ($rc,$run_results) = $self->SUPER::run();
+    my $results = {};
+    my $outfile = $self->outfile_name();
+    open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
+    my $readed_header = 0;
+    my @elems;
+    while (<OUTFILE>) {
+        if ($readed_header) {
+           # REL results are csv
+           my @values = split("\,",$_);
+           for my $i (0 .. (scalar(@values)-1)) {
+               $elems[$i] =~ s/\n//g;
+               push @{$results->{$elems[$i]}}, $values[$i];
+           }
+        } else {
+           @elems = split("\,",$_);
+           $readed_header = 1;
+        }
+    }
     return ($rc,$results);
 }
 
