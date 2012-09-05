@@ -42,7 +42,7 @@ Spencer V. Muse, Simon D.W. Frost and Art Poon.  See
 http://www.hyphy.org for more information.
 
 This module will generate the correct list of options for interfacing
-with TemplateBatchFiles/Ghostrides/Modeltestwrapper.bf.
+with TemplateBatchFiles/Modeltest.bf.
 
 =head1 FEEDBACK
 
@@ -109,8 +109,6 @@ use base qw(Bio::Root::Root Bio::Tools::Run::Phylo::Hyphy::Base);
 Valid and default values for Modeltest are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
-
-INCOMPLETE DOCUMENTATION OF ALL METHODS
 
 =cut
 
@@ -190,7 +188,7 @@ sub new {
  Usage   : my ($rc,$results) = $modeltest->run($aln);
  Function: run the modeltest analysis using the default or updated parameters
            the alignment parameter must have been set
- Returns : Return code, Hash
+ Returns : Return code, hash containing the "Hierarchical Testing" and "AIC" results, both as hashes.
  Args    : L<Bio::Align::AlignI> object,
 	   L<Bio::Tree::TreeI> object [optional]
 
@@ -198,13 +196,28 @@ sub new {
 
 sub run {
     my $self = shift;
-    my ($rc, $results) = $self->SUPER::run();
-    my $outfile = $self->outfile_name();
-
-    open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
-    print OUTFILE $results;
-    close(OUTFILE);
-    return ($rc, $results);
+    my ($rc, $run_results) = $self->SUPER::run();
+    my $results = {};
+    my @run_result_array = split (/\n/, $run_results);
+    my $line = shift @run_result_array;
+    my $current_model = "error"; # if this stays "error" when you're trying to add results for a model, something's wrong.
+    while (defined $line) {
+        if ($line =~ m/Hierarchical Testing based model \((.*)\)/) {
+            $current_model = "Hierarchical Testing";
+            $results->{$current_model}{'model_name'} = $1;
+        } elsif ($line =~ m/AIC based model \((.*)\)/) {
+            $current_model = "AIC";
+            $results->{$current_model}{'model_name'} = $1;
+        } elsif ($line =~ m/Model String:(\d+)/) {
+            $results->{$current_model}{'model_string'} = $1;
+        } elsif ($line =~ m/Model Options: (.+)/) {
+            $results->{$current_model}{'model_options'} = $1;
+        } elsif ($line =~ m/Equilibrium Frequencies Option: (.+)/) {
+            $results->{$current_model}{'eq_freq_option'} = $1;
+        }
+        $line = shift @run_result_array;
+    }
+    return ($rc,$results);
 }
 
 
