@@ -212,26 +212,25 @@ sub new {
 
 sub run {
     my $self = shift;
-    my ($rc, $results) = $self->SUPER::run();
+    my ($rc, $run_results) = $self->SUPER::run();
+    my $results ={};
     my $outfile = $self->outfile_name();
-    eval {
-        open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
-        my $readed_header = 0;
-        my @elems;
-        while (<OUTFILE>) {
-            if ($readed_header) {
-               # FEL results are csv
-               my @values = split("\,",$_);
-               for my $i (0 .. (scalar(@values)-1)) {
-                   $elems[$i] =~ s/\n//g;
-                   push @{$results->{$elems[$i]}}, $values[$i];
-               }
-            } else {
-               @elems = split("\,",$_);
-               $readed_header = 1;
-            }
+    open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
+    my $readed_header = 0;
+    my @elems;
+    while (<OUTFILE>) {
+        if ($readed_header) {
+           # FEL results are csv
+           my @values = split("\,",$_);
+           for my $i (0 .. (scalar(@values)-1)) {
+               $elems[$i] =~ s/\n//g;
+               push @{$results->{$elems[$i]}}, $values[$i];
+           }
+        } else {
+           @elems = split("\,",$_);
+           $readed_header = 1;
         }
-    };
+    }
     return ($rc, $results);
 }
 

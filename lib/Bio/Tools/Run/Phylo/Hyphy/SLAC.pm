@@ -217,28 +217,26 @@ sub new {
 
 sub run {
     my $self = shift;
-    my $results = ();
+    my $results = {};
+    print ref($results) . "\n";
     my ($rc, $run_output) = $self->SUPER::run();
-
     my $outfile = $self->outfile_name();
-    eval {
-       open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
-       my $readed_header = 0;
-       my @elems;
-       while (my $line = <OUTFILE>) {
-           if ($readed_header) {
-               # SLAC results are tsv
-               my @values = split("\t",$line);
-               for my $i (0 .. (scalar(@values)-1)) {
-                   $elems[$i] =~ s/\n//g;
-                   push @{$results->{$elems[$i]}}, $values[$i];
-               }
-           } else {
-               @elems = split("\t",$line);
-               $readed_header = 1;
+    open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
+    my $readed_header = 0;
+    my @elems;
+    while (my $line = <OUTFILE>) {
+       if ($readed_header) {
+           # SLAC results are tsv
+           my @values = split("\t",$line);
+           for my $i (0 .. (scalar(@values)-1)) {
+               $elems[$i] =~ s/\n//g;
+               push @{$results->{$elems[$i]}}, $values[$i];
            }
+       } else {
+           @elems = split("\t",$line);
+           $readed_header = 1;
        }
-    };
+    }
     return ($rc, $results);
 }
 
