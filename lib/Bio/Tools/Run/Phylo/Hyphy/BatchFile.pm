@@ -178,7 +178,6 @@ sub run {
     my $self = shift;
     my ($rc, $results) = $self->SUPER::run();
     my $outfile = $self->outfile_name();
-    print "###$outfile\n";
     open(OUTFILE, ">", $outfile) or $self->throw("cannot open $outfile for writing");
     print OUTFILE $results;
     close(OUTFILE);
