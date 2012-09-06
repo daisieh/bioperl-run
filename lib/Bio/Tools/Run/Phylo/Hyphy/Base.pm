@@ -88,8 +88,6 @@ Valid and default values are listed below.  The default
 values are always the first one listed.  These descriptions are
 essentially lifted from the python wrapper or provided by the author.
 
-INCOMPLETE DOCUMENTATION OF ALL METHODS
-
 =cut
 
 our $PROGRAMNAME = 'HYPHYMP';
@@ -186,10 +184,6 @@ sub new {
 
 sub prepare {
    my ($self,$aln,$tree) = @_;
-   unless ( $self->save_tempfiles ) {
-      # brush so we don't get plaque buildup ;)
-      $self->cleanup();
-   }
    $tree = $self->tree unless $tree;
    $aln  = $self->alignment unless $aln;
    if( ! $aln ) {
@@ -271,9 +265,9 @@ sub create_wrapper {
       $counter = sprintf("%02d",$counter+1);
    }
    # This next line is for BatchFile:
-    if (($batchfile =~ m/YangNielsenBranchSite2005.bf/) ||
-        ($batchfile =~ m/QuickSelectionDetection.bf/) ||
-        ($batchfile =~ m/ModelTest.bf/)) {
+    if ((ref ($self)) =~ m/BatchFile/) {
+        print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
+    } else {
         # Not exactly sure what version of HYPHY caused this change,
         # but Github source changes suggest that it was sometime
         # after version 0.9920060501 was required.
@@ -283,19 +277,10 @@ sub create_wrapper {
         } else {
            print WRAPPER qq{\nExecuteAFile (HYPHY_BASE_DIRECTORY + "TemplateBatchFiles" + DIRECTORY_SEPARATOR  + "$batchfile", stdinRedirect);\n};
         }
-    } else {
-        print WRAPPER "\nExecuteAFile ($batchfile, $redirect);\n";
     }
 
    close(WRAPPER);
    $self->{'_wrapper'} = $wrapper;
-#   #### DEBUGGING CODE:
-#    open WRAPPER, "<", $wrapper;
-#    while (my $line = <WRAPPER>) {
-#         print $line;
-#    }
-#    close WRAPPER;
-#   #### END DEBUGGING CODE
 }
 
 
@@ -584,7 +569,7 @@ sub version {
     }
     # if it's not already defined, write out a small batchfile to return the version string, then clean up.
     my $versionbf = "$tempdir/version.bf";
-    open(WRAPPER, ">$versionbf") or $self->throw("cannot open $versionbf for writing");
+    open(WRAPPER, ">", $versionbf) or $self->throw("cannot open $versionbf for writing");
     print WRAPPER qq{GetString (versionString, HYPHY_VERSION, 2);\nfprintf (stdout, versionString);};
     close(WRAPPER);
     my $exe = $self->executable();
@@ -599,5 +584,40 @@ sub version {
     $self->{'_version'} = $output;
     return $output;
 }
+
+=head2 hyphy_lib_dir
+
+ Title   : hyphy_lib_dir
+ Usage   : $obj->hyphy_lib_dir()
+ Function: Returns the HYPHY_LIB_DIRECTORY from HYPHY
+ Returns : string
+ Args    : none
+
+
+=cut
+
+sub hyphy_lib_dir {
+    my $self = shift;
+    if (defined $self->{'_hyphylibdir'}) {
+        return $self->{'_hyphylibdir'};
+    }
+    # if it's not already defined, write out a small batchfile to return the version string, then clean up.
+    my $hyphylibdirbf = $self->io->catfile($self->tempdir,"hyphylibdir.bf");
+    open(WRAPPER, ">", $hyphylibdirbf) or $self->throw("cannot open $hyphylibdirbf for writing");
+    print WRAPPER qq{fprintf (stdout, HYPHY_LIB_DIRECTORY);};
+    close(WRAPPER);
+    my $exe = $self->executable();
+    unless ($exe && -e $exe && -x _) {
+        $self->throw("unable to find or run executable for 'HYPHY'");
+    }
+    my $commandstring = $exe . " BASEPATH=" . $self->program_dir . " " . $hyphylibdirbf;
+    open(RUN, "$commandstring |") or $self->throw("Cannot open exe $exe");
+    my $output = <RUN>;
+    close(RUN);
+    unlink $hyphylibdirbf;
+    $self->{'_hyphylibdir'} = $output;
+    return $output;
+}
+
 
 1;
