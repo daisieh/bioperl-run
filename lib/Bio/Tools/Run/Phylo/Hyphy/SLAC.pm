@@ -218,7 +218,6 @@ sub new {
 sub run {
     my $self = shift;
     my $results = {};
-    print ref($results) . "\n";
     my ($rc, $run_output) = $self->SUPER::run();
     my $outfile = $self->outfile_name();
     open(OUTFILE, "$outfile") or $self->throw("cannot open $outfile for reading");
