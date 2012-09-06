@@ -189,7 +189,7 @@ sub run {
 
  Title   : create_wrapper
  Usage   : $self->create_wrapper
- Function: Creates the wrapper file for the batchfile specified in new(), saves it to the hash as '_wrapper'.
+ Function: Creates the wrapper file for the batchfile specified in the hash, saves it to the hash as '_wrapper'.
  Returns : nothing
  Args    : none
 
@@ -198,8 +198,23 @@ sub run {
 
 sub create_wrapper {
     my $self = shift;
-    my $batchfile = '"' . $self->{'_params'}{'bf'} . '"';
-    $self->SUPER::create_wrapper($batchfile);
+    my $batchfile = $self->batchfile;
+    unless (defined($batchfile)) {
+        $self->throw("No batchfile specified, couldn't create wrapper.");
+    }
+
+    unless (-f $batchfile) {
+        # check to see if maybe this batchfile is a template batchfile
+        my $new_bf = $self->io->catfile($self->hyphy_lib_dir,"TemplateBatchFiles",$batchfile);
+        $new_bf =~ s/\"//g;
+        if (-f $new_bf) {
+            $self->batchfile($new_bf);
+        } else {
+            $self->throw ("Specified batchfile $batchfile not found.");
+            return;
+        }
+    }
+    $self->SUPER::create_wrapper('"' . $self->batchfile . '"');
 }
 
 =head2 set_parameter
@@ -207,7 +222,7 @@ sub create_wrapper {
 Title   :  set_parameter
 Usage   :  $hyphy->set_parameter($param,$val);
 Function:  Sets the named parameter $param to $val if it is a non-numeric parameter
-           If $param is a number, sets the corresponding value of the ordered redirect array.
+           If $param is a number, sets the corresponding value of the ordered redirect array (starts from 1).
 Returns :  boolean if set was successful
 Args    :  $param => name of the parameter
            $value => value to set the parameter to
@@ -218,11 +233,54 @@ Args    :  $param => name of the parameter
 sub set_parameter {
     my ($self,$param,$value) = @_;
     if ($param =~ /\d+/) {
-        $self->{'_params'}{'order'}[$param] = $value;
+        $self->{'_params'}{'order'}[$param-1] = $value;
     } else {
         $self->{'_params'}{$param} = $value;
     }
     return 1;
+}
+
+=head2 batchfile
+
+Title   :  batchfile
+Usage   :  $hyphy->batchfile($bf_name);
+Function:  Gets/sets the batchfile that is run by $hyphy.
+Returns :  The batchfile path.
+Args    :  $bf_name => path of new batchfile
+
+=cut
+
+sub batchfile {
+    my ($self,$bf) = @_;
+    if (defined $bf) {
+        $self->set_parameter('bf', $bf);
+    }
+
+    if ($self->{'_params'}{'bf'}) {
+        return $self->{'_params'}{'bf'};
+    } else {
+        $self->warn ("Batchfile was requested but no batchfile was found.");
+    }
+    return;
+}
+
+=head2 make_batchfile_with_contents
+
+Title   :  make_batchfile_with_contents
+Usage   :  $hyphy->make_batchfile_with_contents($bf_string);
+Function:  Creates a temporary file with the specified string of contents for the batchfile.
+Returns :  The batchfile path.
+Args    :  $bf_string => contents for the batchfile
+
+=cut
+
+sub make_batchfile_with_contents {
+    my ($self,$bf_string) = @_;
+    my $temp_bf = $self->io->catfile($self->tempdir,"temp.bf");
+    open (BF, ">", $temp_bf) or $self->throw("cannot open $temp_bf for writing");
+    print BF "$bf_string\n";
+    close BF;
+    return $self->batchfile($temp_bf);
 }
 
 
