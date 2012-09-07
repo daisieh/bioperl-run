@@ -50,9 +50,6 @@ SKIP: {
 	if (($rc == 0) && ($debug == 1)){
 		warn("ERROR in FEL module $rc:" . $fel->error_string() . "\n");
 	}
-    foreach my $key (keys %{$results}) {
-        print "\t\t$key, " . $results->{$key} . "\n";
-    }
 	ok (defined($results->{'LRT'}), "FEL module");
 
 	my $modeltest = Bio::Tools::Run::Phylo::Hyphy::Modeltest->new();
@@ -67,7 +64,8 @@ SKIP: {
 	my $bf_exec = Bio::Tools::Run::Phylo::Hyphy::BatchFile->new(-params => {'bf' => "ModelTest.bf", 'order' => [$aln, $tree, '4', 'AIC Test', ""]});
 	$bf_exec->alignment($aln);
 	$bf_exec->tree($tree);
- 	$bf_exec->set_parameter(4, $bf_exec->tempdir() . "/output");
+	my ($tfh, $t) = $bf_exec->io->tempfile;
+ 	$bf_exec->set_parameter(5, $t);
  	$bf_exec->version();
  	($rc,$results) = $bf_exec->run();
 	if (($rc == 0) && ($debug == 1)){
