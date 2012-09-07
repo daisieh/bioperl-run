@@ -117,7 +117,6 @@ essentially lifted from the python wrapper or provided by the author.
 
 =cut
 
-
 sub valid_values {
     return
         (
@@ -150,7 +149,6 @@ See also: L<Bio::Tree::TreeI>, L<Bio::Align::AlignI>
 
 sub new {
    my($class,@args) = @_;
-
    my $self = $class->SUPER::new(@args);
    my ($aln, $tree, $st, $params, $exe,
    $ubl) = $self->_rearrange([qw(ALIGNMENT TREE SAVE_TEMPFILES PARAMS EXECUTABLE)], @args);
@@ -158,8 +156,6 @@ sub new {
    defined $tree && $self->tree($tree);
    defined $st  && $self->save_tempfiles($st);
    defined $exe && $self->executable($exe);
-
-   #my $tsvfile = $self->tempdir() . "/results.tsv";
 
    $self->set_default_parameters();
    if( defined $params ) {
@@ -228,6 +224,5 @@ sub create_wrapper {
    my $batchfile = "YangNielsenBranchSite2005.bf";
    $self->SUPER::create_wrapper($batchfile);
 }
-
 
 1;
