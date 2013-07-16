@@ -4,7 +4,7 @@
       "BioPerl Team <bioperl-l@bioperl.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Build version 0.4, CPAN::Meta::Converter version 2.112150",
+   "generated_by" : "Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "perl_5"
    ],
@@ -16,12 +16,12 @@
    "prereqs" : {
       "runtime" : {
          "recommends" : {
-            "Algorithm::Diff" : 0,
-            "Config::Any" : 0,
-            "File::Sort" : 0,
-            "IO::String" : 0,
-            "IPC::Run" : 0,
-            "XML::Twig" : 0
+            "Algorithm::Diff" : "0",
+            "Config::Any" : "0",
+            "File::Sort" : "0",
+            "IO::String" : "0",
+            "IPC::Run" : "0",
+            "XML::Twig" : "0"
          },
          "requires" : {
             "Bio::Root::Version" : "1.006900",
