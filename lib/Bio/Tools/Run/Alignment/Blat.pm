@@ -11,15 +11,14 @@ Bio::Tools::Run::Alignment::Blat
 =head1 SYNOPSIS
 
  use Bio::Tools::Run::Alignment::Blat;
-
  my $factory = Bio::Tools::Run::Alignment::Blat->new(-db => $database);
- # $report is a SearchIO-compliant object
- my $report = $factory->align($seqobj);
+ # $report is a Bio::SearchIO-compliant object
+ my $report = $factory->run($seqobj);
 
 =head1 DESCRIPTION
 
-Wrapper module for Blat program.  This newer version allows for all
-parameters to be set.
+Wrapper module for Blat program. This newer version allows for all parameters to
+be set by passing them as an option to new().
 
 Key bits not implemented yet (TODO):
 
@@ -76,7 +75,7 @@ web:
 
  Chris Fields - cjfields at bioperl dot org
 
- Original author- Bala Email bala@tll.org.sg
+ Original author - Bala Email bala@tll.org.sg
 
 =head1 APPENDIX
 
@@ -84,6 +83,7 @@ The rest of the documentation details each of the object
 methods. Internal methods are usually preceded with a _
 
 =cut
+
 
 package Bio::Tools::Run::Alignment::Blat;
 
@@ -110,47 +110,55 @@ our %LOCAL_ATTRIBUTES = map {$_ => 1} qw(db DB qsegment hsegment searchio
                                     outfile_name quiet);
 
 our %searchio_map = (
-    'psl'   => 'psl',
-    'pslx'  => 'psl', # I don't think there is support for this yet
-    'axt'   => 'axt',
-    'blast' => 'blast',
-    'sim4'  => 'sim4',
-    'wublast'   => 'blast',
-    'blast8'    => 'blasttable',
-    'blast9'    => 'blasttable'
+    'psl'     => 'psl',
+    'pslx'    => 'psl', # I don't think there is support for this yet
+    'axt'     => 'axt',
+    'blast'   => 'blast',
+    'sim4'    => 'sim4',
+    'wublast' => 'blast',
+    'blast8'  => 'blasttable',
+    'blast9'  => 'blasttable'
 );
+
 
 =head2 new
 
  Title   : new
- Usage   : $blat->new(@params)
- Function: creates a new Blat factory
- Returns : Bio::Tools::Run::Alignment::Blat
- Args    :
+ Usage   : $blat->new( -db => '' )
+ Function: Create a new Blat factory
+ Returns : A new Bio::Tools::Run::Alignment::Blat object
+ Args    : -db       : Mandatory parameter. See db()
+           -qsegment : see qsegment()
+           -tsegment : see tsegment()
+           Also, Blat parameters and flags are accepted: -t, -q, -minIdentity,
+              -minScore, -out, -trimT, ...
+           See Blat's manual for details.
 
 =cut
 
 sub new {
-    my ($class,@args) = @_;
+    my ($class, @args) = @_;
     my $self = $class->SUPER::new(@args);
     $self->io->_initialize_io();
     $self->set_parameters(@args);
     return $self;
 }
 
+
 =head2 program_name
 
  Title   : program_name
  Usage   : $factory->program_name()
- Function: holds the program name
+ Function: Get the program name
  Returns : string
  Args    : None
 
 =cut
 
 sub program_name {
-  return 'blat';
+    return 'blat';
 }
+
 
 =head2 program_dir
 
@@ -163,47 +171,52 @@ sub program_name {
 =cut
 
 sub program_dir {
-  return Bio::Root::IO->catfile($ENV{BLATDIR}) if $ENV{BLATDIR};
+    return Bio::Root::IO->catfile($ENV{BLATDIR}) if $ENV{BLATDIR};
 }
+
 
 =head2 run
 
- Title   :   run()
- Usage   :   $obj->run($query)
- Function:   Runs Blat and creates an array of featrues
- Returns :   An array of Bio::SeqFeature::Generic objects
- Args    :   A Bio::PrimarySeqI or a file name
+ Title   : run()
+ Usage   : $obj->run($query)
+ Function: Run Blat.
+ Returns : A Bio::SearchIO object that holds the results
+ Args    : A Bio::PrimarySeqI object or a file of query sequences
 
 =cut
 
 sub run {
-	my ($self,$query) = @_;
-	my @feats;
-
-	if  (ref($query) ) {	# it is an object
-    	if (ref($query) =~ /GLOB/) {
-	      $self->throw("Cannot use filehandle as argument to run()");
-    	}
-    	my $infile = $self->_writeSeqFile($query);
-        return  $self->_run($infile);
-	} else {
-		return $self->_run($query);
-	}
+    my ($self, $query) = @_;
+    if  (ref($query) ) {  # it is an object
+        if (ref($query) =~ /GLOB/) {
+            $self->throw("Cannot use filehandle as argument to run()");
+        }
+        $query = $self->_writeSeqFile($query);
+    }
+    return $self->_run($query);
 }
+
 
 =head2 align
 
- Title   :   align
- Usage   :   $obj->align($query)
- Function:   Alias to run()
+ Title   : align
+ Usage   : $obj->align($query)
+ Function: Alias to run()
 
 =cut
 
 sub align {
-  return shift->run(@_);
+    return shift->run(@_);
 }
 
+
 =head2 db
+
+ Title   : db
+ Usage   : $obj->db()
+ Function: Get or set the file of database sequences (.fa , .nib or .2bit)
+ Returns : Database filename
+ Args    : Database filename
 
 =cut
 
@@ -218,6 +231,7 @@ sub db {
 
 *DB = \&db;
 
+
 =head2 qsegment
 
  Title    : qsegment
@@ -225,7 +239,6 @@ sub db {
  Function : pass in a B<UCSC-compliant> string for the query sequence(s)
  Returns  : string
  Args     : string
- Status   : New
  Note     : Requires the sequence(s) in question be 2bit or nib format
  Reminder : UCSC segment/regions coordinates are 0-based half-open (sequence
             begins at 0, but start isn't counted with length), whereas BioPerl
@@ -242,6 +255,7 @@ sub qsegment {
     return $self->{blat_qsegment};
 }
 
+
 =head2 tsegment
 
  Title    : tsegment
@@ -249,7 +263,6 @@ sub qsegment {
  Function : pass in a B<UCSC-compliant> string for the target sequence(s)
  Returns  : string
  Args     : string
- Status   : New
  Note     : Requires the sequence(s) in question be 2bit or nib format
  Reminder : UCSC segment/regions coordinates are 0-based half-open (sequence
             begins at 0, but start isn't counted with length), whereas BioPerl
@@ -266,12 +279,24 @@ sub tsegment {
     return $self->{blat_tsegment};
 }
 
+
+=head2 outfile_name
+
+ Title    : outfile_name
+ Usage    : $obj->outfile_name('out.blat')
+ Function : Get or set the name for the BLAT output file
+ Returns  : string
+ Args     : string
+
+=cut
+
 # override this, otherwise one gets a default of 'mlc'
 sub outfile_name {
     my $self = shift;
     return $self->{blat_outfile} = shift if @_;
     return $self->{blat_outfile};
 }
+
 
 =head2 searchio
 
@@ -280,7 +305,6 @@ sub outfile_name {
  Function : Pass in additional parameters to the returned Bio::SearchIO parser
  Returns  : Hash reference with Bio::SearchIO parameters
  Args     : Hash reference
- Status   : New
  Note     : Currently, this implementation overrides any passed -format
             parameter based on whether the output is changed ('out').  This
             may change if requested, but we can't see the utility of doing so,
@@ -298,11 +322,10 @@ sub searchio {
     return $self->{blat_searchio} || {};
 }
 
+
 =head1 Bio::ParameterBaseI-specific methods
 
 These methods are part of the Bio::ParameterBaseI interface
-
-=cut
 
 =head2 set_parameters
 
@@ -313,6 +336,7 @@ These methods are part of the Bio::ParameterBaseI interface
  Args    : [optional] hash or array of parameter/values.  These can optionally
            be hash or array references
  Note    : This only sets parameters; to set methods use the method name
+
 =cut
 
 sub set_parameters {
@@ -338,6 +362,7 @@ sub set_parameters {
     }
 }
 
+
 =head2 reset_parameters
 
  Title   : reset_parameters
@@ -356,6 +381,7 @@ sub reset_parameters {
     }
 }
 
+
 =head2 validate_parameters
 
  Title   : validate_parameters
@@ -370,6 +396,7 @@ sub reset_parameters {
 
 sub validate_parameters { 0 }
 
+
 =head2 parameters_changed
 
  Title   : parameters_changed
@@ -382,6 +409,7 @@ sub validate_parameters { 0 }
 =cut
 
 sub parameters_changed { 1 }
+
 
 =head2 available_parameters
 
@@ -399,6 +427,7 @@ sub available_parameters {
     my @params = (sort keys %BLAT_PARAMS, sort keys %BLAT_SWITCHES);
     return @params;
 }
+
 
 =head2 get_parameters
 
@@ -422,11 +451,10 @@ sub get_parameters {
     return %params;
 }
 
+
 =head1 to_* methods
 
 All to_* methods are implementation-specific
-
-=cut
 
 =head2 to_exe_string
 
@@ -481,14 +509,15 @@ sub to_exe_string {
     
     my $string = "$exe ".join(' ',@params);
 
-    $string;
+    return $string;
 }
+
 
 #=head2 _input
 #
-# Title   :   _input
-# Usage   :   obj->_input($seqFile)
-# Function:   Internal (not to be used directly)
+# Title   : _input
+# Usage   : obj->_input($seqFile)
+# Function: Internal (not to be used directly)
 # Returns :
 # Args    :
 #
@@ -496,17 +525,18 @@ sub to_exe_string {
 
 sub _input() {
     my ($self,$infile1) = @_;
-    if(defined $infile1){
-        $self->{'input'}=$infile1;
-     }   
-     return $self->{'input'};
+    if (defined $infile1) {
+        $self->{'input'} = $infile1;
+    }
+    return $self->{'input'};
 }
+
 
 #=head2 _database
 #
-# Title   :   _database
-# Usage   :   obj->_database($seqFile)
-# Function:   Internal (not to be used directly)
+# Title   : _database
+# Usage   : obj->_database($seqFile)
+# Function: Internal (not to be used directly)
 # Returns :
 # Args    :
 #
@@ -521,48 +551,48 @@ sub _database() {
 
 #=head2 _run
 #
-# Title   :   _run
-# Usage   :   $obj->_run()
-# Function:   Internal (not to be used directly)
-# Returns :   An array of Bio::SeqFeature::Generic objects
-# Args    :
+# Title   : _run
+# Usage   : $obj->_run()
+# Function: Internal (not to be used directly)
+# Returns : A Bio::SearchIO object that contains the results
+# Args    : File of sequences
 #
 #=cut
 
 sub _run {
-	my ($self)= shift;
-	my $str = $self->to_exe_string(-seq_file => shift);
+    my ($self, $seq_file) = @_;
+    my $str = $self->to_exe_string(-seq_file => $seq_file);
     
     my $out = $self->outfile_name || $self->_tempfile;
     
     $str .= " $out".$self->_quiet;
-	$self->debug($str."\n") if( $self->verbose > 0 );
+    $self->debug($str."\n") if( $self->verbose > 0 );
 
     my %params = $self->get_parameters;
 
-	my $status = system($str);
-	$self->throw( "Blat call ($str) crashed: $? \n") unless $status==0;
-	
+    my $status = system($str);
+    $self->throw( "Blat call ($str) crashed: $? \n") unless $status==0;
+
     my $format = exists($params{out}) ?
                 $searchio_map{$params{out}} : 'psl';
     
-	my @io = ref ($out) !~ /GLOB/ ? (-file    => $out,) : (-fh    => $out,);
-	my $blat_obj = Bio::SearchIO->new(%{$self->searchio},
+    my @io = ref ($out) !~ /GLOB/ ? (-file    => $out,) : (-fh    => $out,);
+    my $blat_obj = Bio::SearchIO->new(%{$self->searchio},
                                     @io,
                                     -query_type => $params{prot} ? 'protein' :
                                                     $params{q} || 'dna',
                                     -hit_type   => $params{prot} ? 'protein' :
                                                     $params{t} || 'dna',
                                     -format => $format);
-	return $blat_obj;
+    return $blat_obj;
 }
 
 
 #=head2 _writeSeqFile
 #
-# Title   :   _writeSeqFile
-# Usage   :   obj->_writeSeqFile($seq)
-# Function:   Internal (not to be used directly)
+# Title   : _writeSeqFile
+# Usage   : obj->_writeSeqFile($seq)
+# Function: Internal (not to be used directly)
 # Returns :
 # Args    :
 #
@@ -577,13 +607,15 @@ sub _writeSeqFile {
     return $inputfile;
 }
 
+
 sub _tempfile {
     my $self = shift;
     my ($tfh,$outfile) = $self->io->tempfile(-dir=>$Bio::Root::IO::TEMPDIR);
-	# this is because we only want a unique filename
-	close($tfh);
+    # this is because we only want a unique filename
+    close($tfh);
     return $outfile;
 }
+
 
 sub _quiet {
     my $self = shift;
@@ -592,7 +624,7 @@ sub _quiet {
     if ($self->quiet) {
         $q =  $^O =~ /Win/i ? ' 2>&1 NUL' : ' > /dev/null 2>&1';
     }
-    $q;
+    return $q;
 }
 
 1;
